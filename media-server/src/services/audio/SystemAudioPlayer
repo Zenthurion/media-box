@@ -1,0 +1,176 @@
+import EventEmitter from "events";
+import { spawn } from 'child_process';
+import { createHash } from 'crypto';
+import { existsSync, mkdirSync } from 'fs';
+import { join } from 'path';
+import { IAudioPlayer, IPlaybackStatus } from "./AudioPlayer";
+
+export class SystemAudioPlayer extends EventEmitter implements IAudioPlayer {
+  private currentProcess: any = null;
+  private ffmpegProcess: any = null;
+  private playerProcess: any = null;
+  private status: IPlaybackStatus = {
+    isPlaying: false
+  };
+  private readonly cacheDir: string;
+
+  constructor() {
+    super();
+    // Create cache directory in user's home directory
+    this.cacheDir = join(process.env.HOME || process.env.USERPROFILE || '.', '.audio-cache');
+    if (!existsSync(this.cacheDir)) {
+      mkdirSync(this.cacheDir, { recursive: true });
+    }
+  }
+
+  private getCacheFilePath(url: string): string {
+    // Create a unique filename based on URL hash
+    const hash = createHash('md5').update(url).digest('hex');
+    return join(this.cacheDir, `${hash}.mp3`);
+  }
+
+  async play(url: string): Promise<void> {
+    await this.stop();
+
+    try {
+      this.status = {
+        isPlaying: true,
+        currentUrl: url
+      };
+
+      const cacheFile = this.getCacheFilePath(url);
+
+      // Check if file exists in cache
+      if (existsSync(cacheFile)) {
+        console.log('Playing from cache:', cacheFile);
+        await this.playLocalFile(cacheFile);
+        return;
+      }
+
+      // If not in cache, download and cache while playing
+      console.log('Downloading and caching:', url);
+      
+      // Start yt-dlp process to download and cache
+      this.currentProcess = spawn('yt-dlp', [
+        '-f', 'bestaudio',
+        '--hls-prefer-ffmpeg',
+        '--live-from-start',
+        '--geo-bypass',
+        '--verbose',
+        '-o', cacheFile,
+        url
+      ], { detached: true });
+
+      // Wait for download to complete
+      await new Promise<void>((resolve, reject) => {
+        this.currentProcess.on('close', (code: number) => {
+          if (code === 0) {
+            resolve();
+          } else {
+            reject(new Error(`yt-dlp exited with code ${code}`));
+          }
+        });
+        this.currentProcess.on('error', reject);
+      });
+
+      // Now play the cached file
+      await this.playLocalFile(cacheFile);
+
+    } catch (error) {
+      await this.stop();
+      this.status.isPlaying = false;
+      throw error;
+    }
+  }
+
+  private async playLocalFile(filePath: string): Promise<void> {
+    // Start ffplay process for local playback
+    this.playerProcess = spawn('ffplay', [
+      '-nodisp',
+      '-autoexit',
+      '-loglevel', 'info',
+      '-probesize', '10M',
+      '-analyzeduration', '10000000',
+      filePath
+    ], { detached: true });
+
+    // Add stderr logging for debugging
+    this.playerProcess.stderr.on('data', (data: Buffer) => {
+      console.log('FFplay:', data.toString());
+    });
+
+    // Handle completion
+    this.playerProcess.on('close', (code: number) => {
+      console.log('Playback finished with code:', code);
+      this.status.isPlaying = false;
+      this.emit('stopped');
+    });
+
+    return new Promise((resolve, reject) => {
+      // Wait for the player to start
+      setTimeout(() => {
+        if (this.status.isPlaying) {
+          resolve();
+        }
+      }, 100);
+
+      // Handle early errors
+      this.playerProcess.on('error', (error: Error) => {
+        this.status.isPlaying = false;
+        reject(error);
+      });
+    });
+  }
+
+  async stop(): Promise<void> {
+    const processes = [this.currentProcess, this.ffmpegProcess, this.playerProcess];
+    
+    for (const proc of processes) {
+      if (proc) {
+        try {
+          // First try to kill the process group
+          try {
+            process.kill(-proc.pid, 'SIGKILL');
+          } catch (e) {
+            // If killing process group fails, try killing just the process
+            proc.kill('SIGKILL');
+          }
+
+          // Also end all streams
+          if (proc.stdin) proc.stdin.destroy();
+          if (proc.stdout) proc.stdout.destroy();
+          if (proc.stderr) proc.stderr.destroy();
+        } catch (error) {
+          console.error('Error killing process:', error);
+        }
+      }
+    }
+
+    // Wait a bit to ensure processes are killed
+    await new Promise(resolve => setTimeout(resolve, 100));
+
+    this.currentProcess = null;
+    this.ffmpegProcess = null;
+    this.playerProcess = null;
+    
+    this.status = {
+      isPlaying: false
+    };
+    
+    this.emit('stopped');
+  }
+
+  async pause(): Promise<void> {
+    // System process doesn't support pause
+    throw new Error('Pause not supported in system audio player');
+  }
+
+  async resume(): Promise<void> {
+    // System process doesn't support resume
+    throw new Error('Resume not supported in system audio player');
+  }
+
+  getStatus(): IPlaybackStatus {
+    return { ...this.status };
+  }
+} 

@@ -98,14 +98,9 @@ void loop()
     // Handle button press
     if (isButtonPressed())
     {
-        Serial.println("------------------");
-        Serial.println("Button press detected!");
-        const char *predefinedMessage = "button_pressed";
-        Serial.println("Attempting to send button message...");
+        const char *predefinedMessage = "https://music.youtube.com/watch?v=CTvjhbfrgEY";
 
         bool publishResult = wifiManager.publish(mqtt_topic, predefinedMessage);
-        Serial.print("Publish result: ");
-        Serial.println(publishResult ? "Success" : "Failed");
 
         if (publishResult)
         {

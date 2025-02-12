@@ -1,31 +1,24 @@
 import Aedes, { AedesPublishPacket, Client } from 'aedes';
 import { createServer, Server } from 'net';
 import { config } from '../config/config';
-import { URLHandler } from '../handlers/URLHandler';
-import { MediaPlayer } from './MediaPlayer';
-import play from 'play-dl';
-// import { MQTTMessage, MQTTClient } from '../types/mqtt';
+import EventEmitter from 'events';
 
-export class MQTTService {
+export class MQTTService extends EventEmitter {
   private aedes: Aedes;
   private server: Server;
-  private urlHandler: URLHandler;
-  private mediaPlayer: MediaPlayer;
 
   constructor() {
+    super();
+
     this.aedes = new Aedes();
     this.server = createServer(this.aedes.handle);
-    this.urlHandler = new URLHandler();
-    this.mediaPlayer = new MediaPlayer();
 
-    // Bind methods to maintain 'this' context
     this.handlePublish = this.handlePublish.bind(this);
     this.handleClientConnect = this.handleClientConnect.bind(this);
     this.handleClientDisconnect = this.handleClientDisconnect.bind(this);
   }
 
   async start(): Promise<void> {
-    // Set up event handlers
     this.setupEventHandlers();
 
     return new Promise((resolve, reject) => {
@@ -40,13 +33,8 @@ export class MQTTService {
   }
 
   private setupEventHandlers(): void {
-    // Handle client connections
     this.aedes.on('client', this.handleClientConnect);
-    
-    // Handle client disconnections
     this.aedes.on('clientDisconnect', this.handleClientDisconnect);
-    
-    // Handle published messages
     this.aedes.on('publish', this.handlePublish as any);
   }
 
@@ -61,44 +49,15 @@ export class MQTTService {
 
       console.log(`Received message from ${client.id} on topic ${packet.topic}`);
 
-      // Only process messages from the expected topic
       if (packet.topic === config.mqtt.urlTopic) {
         console.log(`Processing URL: ${message}`);
-        await this.processUrl(message);
+        this.emit('url', message);
       }
     } catch (error) {
       console.error('Error processing published message:', error);
     }
   }
 
-  private async processUrl(url: string): Promise<void> {
-    try {
-      // url = url.replace('music.youtube.com', 'youtube.com');
-      const mediaType = await this.urlHandler.determineMediaType(url);
-      
-      // Validate the URL first
-      const validateUrl = await play.validate(url);
-      if (!validateUrl) {
-        console.log(`Invalid URL: ${url}`);
-        return;
-      }
-
-      switch (mediaType) {
-        case 'youtube-music':
-          console.log('Playing audio from YouTube Music');
-          await this.mediaPlayer.playAudio(url);
-          break;
-        case 'youtube-video':
-          console.log('Casting video from YouTube');
-          await this.mediaPlayer.castVideo(url);
-          break;
-        default:
-          console.log(`Unsupported media type for URL: ${url}`);
-      }
-    } catch (error) {
-      console.error('Error processing URL:', error);
-    }
-  }
 
   private handleClientConnect(client: Client): void {
     console.log(`Client connected: ${client.id}`);

@@ -1,17 +1,16 @@
-import { MQTTService } from "./services/MQTTService";
+import { Server } from "./server";
 
 async function main() {
-    const mqttService = new MQTTService();
-
+  const server = new Server();
     // Handle process termination
     process.on('SIGINT', async () => {
       console.log('Shutting down...');
-      await mqttService.stop();
+      await server.stop();
       process.exit(0);
     });
   
     try {
-      await mqttService.start();
+      await server.start();
       console.log('Server started successfully');
     } catch (error) {
       console.error('Failed to start server:', error);
