@@ -13,21 +13,32 @@ export class EpaperDisplay {
   private readonly HEIGHT = 122;
 
   constructor() {
-    // Initialize GPIO pins
-    this.dcPin = new Gpio(25, 'out');
-    this.resetPin = new Gpio(17, 'out');
-    this.busyPin = new Gpio(24, 'in');
-    this.csPin = new Gpio(8, 'out');
+    try {
+      console.log('Initializing GPIO pins...');
+      // Initialize GPIO pins
+      this.dcPin = new Gpio(22, 'out');
+      this.resetPin = new Gpio(11, 'out');
+      this.busyPin = new Gpio(18, 'in');
+      this.csPin = new Gpio(24, 'out');
 
-    // Initialize SPI
-    this.spi = spi.open(0, 0, {
-      mode: 0,
-      maxSpeedHz: 4000000
-    }, err => {
-      if (err) throw err;
-    });
+      console.log('Initializing SPI...');
+      // Initialize SPI
+      this.spi = spi.open(0, 0, {
+        mode: 0,
+        maxSpeedHz: 4000000
+      }, err => {
+        if (err) {
+          console.error('SPI initialization error:', err);
+          throw err;
+        }
+        console.log('SPI initialized successfully');
+      });
 
-    this.init();
+      this.init();
+    } catch (error) {
+      console.error('Display initialization failed:', error);
+      throw error;
+    }
   }
 
   private async init(): Promise<void> {
