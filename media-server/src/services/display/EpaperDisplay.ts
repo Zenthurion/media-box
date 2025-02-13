@@ -1,8 +1,8 @@
-import { SPI } from 'spi-device';
+import * as spi from 'spi-device';
 import { Gpio } from 'onoff';
 
 export class EpaperDisplay {
-  private spi: SPI;
+  private spi: any;
   private readonly dcPin: Gpio;
   private readonly resetPin: Gpio;
   private readonly busyPin: Gpio;
@@ -20,11 +20,11 @@ export class EpaperDisplay {
     this.csPin = new Gpio(8, 'out');
 
     // Initialize SPI
-    this.spi = new SPI({
-      bus: 0,
-      device: 0,
+    this.spi = spi.open(0, 0, {
       mode: 0,
       maxSpeedHz: 4000000
+    }, err => {
+      if (err) throw err;
     });
 
     this.init();
