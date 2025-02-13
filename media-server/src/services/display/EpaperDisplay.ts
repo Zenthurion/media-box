@@ -15,11 +15,16 @@ export class EpaperDisplay {
   constructor() {
     try {
       console.log('Initializing GPIO pins...');
-      // Initialize GPIO pins
-      this.dcPin = new Gpio(22, 'out');
-      this.resetPin = new Gpio(11, 'out');
-      this.busyPin = new Gpio(18, 'in');
-      this.csPin = new Gpio(24, 'out');
+      // Initialize GPIO pins using BCM numbering
+      this.dcPin = new Gpio(27, 'out');    // Physical pin 13
+      this.resetPin = new Gpio(17, 'out');  // Physical pin 11
+      this.busyPin = new Gpio(22, 'in');    // Physical pin 15
+      this.csPin = new Gpio(8, 'out');      // Physical pin 24 (CE0)
+
+      // Set initial states
+      this.dcPin.writeSync(1);
+      this.resetPin.writeSync(1);
+      this.csPin.writeSync(1);
 
       console.log('Initializing SPI...');
       // Initialize SPI
