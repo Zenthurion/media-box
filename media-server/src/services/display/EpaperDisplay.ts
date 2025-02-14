@@ -24,9 +24,9 @@ export class EpaperDisplay {
       
       // Initialize pins one at a time with error checking
       const pins = [
-        { name: 'DC', pin: 27, direction: 'out' as const },
+        { name: 'DC', pin: 25, direction: 'out' as const },
         { name: 'RESET', pin: 17, direction: 'out' as const },
-        { name: 'BUSY', pin: 22, direction: 'in' as const },
+        { name: 'BUSY', pin: 24, direction: 'in' as const },
         { name: 'CS', pin: 8, direction: 'out' as const }
       ];
 
