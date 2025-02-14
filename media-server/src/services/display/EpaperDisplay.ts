@@ -1,12 +1,13 @@
 import * as spi from 'spi-device';
 import { Gpio } from 'onoff';
+import { existsSync } from 'fs';
 
 export class EpaperDisplay {
   private spi: any;
-  private readonly dcPin: Gpio;
-  private readonly resetPin: Gpio;
-  private readonly busyPin: Gpio;
-  private readonly csPin: Gpio;
+  private dcPin: Gpio | null = null;
+  private resetPin: Gpio | null = null;
+  private busyPin: Gpio | null = null;
+  private csPin: Gpio | null = null;
 
   // Display dimensions for 2.13 inch
   private readonly WIDTH = 250;
@@ -14,20 +15,44 @@ export class EpaperDisplay {
 
   constructor() {
     try {
+      // Wait for GPIO system to be ready
+      if (!existsSync('/dev/gpiomem')) {
+        throw new Error('GPIO is not enabled. Check /boot/config.txt');
+      }
+
       console.log('Initializing GPIO pins...');
-      // Initialize GPIO pins using BCM numbering
-      this.dcPin = new Gpio(27, 'out');    // Physical pin 13
-      this.resetPin = new Gpio(17, 'out');  // Physical pin 11
-      this.busyPin = new Gpio(22, 'in');    // Physical pin 15
-      this.csPin = new Gpio(8, 'out');      // Physical pin 24 (CE0)
+      
+      // Initialize pins one at a time with error checking
+      const pins = [
+        { name: 'DC', pin: 27, direction: 'out' as const },
+        { name: 'RESET', pin: 17, direction: 'out' as const },
+        { name: 'BUSY', pin: 22, direction: 'in' as const },
+        { name: 'CS', pin: 8, direction: 'out' as const }
+      ];
+
+      for (const { name, pin, direction } of pins) {
+        try {
+          const gpio = new Gpio(pin, direction);
+          console.log(`Successfully initialized ${name} pin (GPIO${pin})`);
+          switch (name) {
+            case 'DC': this.dcPin = gpio; break;
+            case 'RESET': this.resetPin = gpio; break;
+            case 'BUSY': this.busyPin = gpio; break;
+            case 'CS': this.csPin = gpio; break;
+          }
+        } catch (error) {
+          console.error(`Failed to initialize ${name} pin (GPIO${pin}):`, error);
+          throw error;
+        }
+      }
 
       // Set initial states
-      this.dcPin.writeSync(1);
-      this.resetPin.writeSync(1);
-      this.csPin.writeSync(1);
+      console.log('Setting initial pin states...');
+      this.dcPin?.writeSync(1);
+      this.resetPin?.writeSync(1);
+      this.csPin?.writeSync(1);
 
       console.log('Initializing SPI...');
-      // Initialize SPI
       this.spi = spi.open(0, 0, {
         mode: 0,
         maxSpeedHz: 4000000
@@ -42,6 +67,7 @@ export class EpaperDisplay {
       this.init();
     } catch (error) {
       console.error('Display initialization failed:', error);
+      this.cleanup();
       throw error;
     }
   }
@@ -55,32 +81,32 @@ export class EpaperDisplay {
   }
 
   private async reset(): Promise<void> {
-    await this.resetPin.write(1);
+    await this.resetPin?.write(1);
     await new Promise(resolve => setTimeout(resolve, 200));
-    await this.resetPin.write(0);
+    await this.resetPin?.write(0);
     await new Promise(resolve => setTimeout(resolve, 200));
-    await this.resetPin.write(1);
+    await this.resetPin?.write(1);
     await new Promise(resolve => setTimeout(resolve, 200));
   }
 
   private async waitUntilIdle(): Promise<void> {
-    while (await this.busyPin.read()) {
+    while (await this.busyPin?.read()) {
       await new Promise(resolve => setTimeout(resolve, 100));
     }
   }
 
   private async sendCommand(cmd: number): Promise<void> {
-    await this.dcPin.write(0);
-    await this.csPin.write(0);
+    await this.dcPin?.write(0);
+    await this.csPin?.write(0);
     await this.spi.transfer([{ sendBuffer: Buffer.from([cmd]) }]);
-    await this.csPin.write(1);
+    await this.csPin?.write(1);
   }
 
   private async sendData(data: number): Promise<void> {
-    await this.dcPin.write(1);
-    await this.csPin.write(0);
+    await this.dcPin?.write(1);
+    await this.csPin?.write(0);
     await this.spi.transfer([{ sendBuffer: Buffer.from([data]) }]);
-    await this.csPin.write(1);
+    await this.csPin?.write(1);
   }
 
   public async displayTrackInfo(title: string, progress: number): Promise<void> {
@@ -120,5 +146,14 @@ export class EpaperDisplay {
     }
     await this.sendCommand(0x12);
     await this.waitUntilIdle();
+  }
+
+  private cleanup(): void {
+    // Cleanup resources
+    this.spi.close();
+    this.dcPin?.unexport();
+    this.resetPin?.unexport();
+    this.busyPin?.unexport();
+    this.csPin?.unexport();
   }
 } 
