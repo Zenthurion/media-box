@@ -1,6 +1,7 @@
 import * as spi from 'spi-device';
 import { Gpio } from 'onoff';
 import { existsSync } from 'fs';
+import { promises as fs } from 'fs';
 
 export class EpaperDisplay {
   private spi: any;
@@ -32,6 +33,15 @@ export class EpaperDisplay {
 
       for (const { name, pin, direction } of pins) {
         try {
+          // Export GPIO synchronously
+          const gpioPath = `/sys/class/gpio/gpio${pin}`;
+          if (!existsSync(gpioPath)) {
+            const exportPath = '/sys/class/gpio/export';
+            require('fs').writeFileSync(exportPath, pin.toString());
+            // Small delay to let the system set up the GPIO
+            require('child_process').execSync('sleep 0.1');
+          }
+
           const gpio = new Gpio(pin, direction);
           console.log(`Successfully initialized ${name} pin (GPIO${pin})`);
           switch (name) {
@@ -69,6 +79,20 @@ export class EpaperDisplay {
       console.error('Display initialization failed:', error);
       this.cleanup();
       throw error;
+    }
+  }
+
+  private cleanup(): void {
+    try {
+        if (this.spi) {
+            this.spi.close();
+        }
+        this.dcPin?.unexport();
+        this.resetPin?.unexport();
+        this.busyPin?.unexport();
+        this.csPin?.unexport();
+    } catch (error) {
+        console.error('Error during cleanup:', error);
     }
   }
 
@@ -146,14 +170,5 @@ export class EpaperDisplay {
     }
     await this.sendCommand(0x12);
     await this.waitUntilIdle();
-  }
-
-  private cleanup(): void {
-    // Cleanup resources
-    this.spi.close();
-    this.dcPin?.unexport();
-    this.resetPin?.unexport();
-    this.busyPin?.unexport();
-    this.csPin?.unexport();
   }
 } 
