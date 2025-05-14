@@ -1,12 +1,17 @@
 # Use ARM-compatible Python image
 FROM --platform=linux/arm/v7 python:3.11-slim-bullseye
 
-# Install VLC, ffmpeg and other dependencies
+# Install system dependencies including build tools and development packages
 RUN apt-get update && apt-get install -y \
     vlc \
     ffmpeg \
     pulseaudio \
     alsa-utils \
+    gcc \
+    python3-dev \
+    zlib1g-dev \
+    libjpeg-dev \
+    build-essential \
     && rm -rf /var/lib/apt/lists/*
 
 # Configure PulseAudio - ensure pulse user is in audio group without failing if user exists
