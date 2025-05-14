@@ -12,6 +12,9 @@ RUN apt-get update && apt-get install -y \
     zlib1g-dev \
     libjpeg-dev \
     build-essential \
+    # Add these new dependencies for PIL font support
+    libfreetype6-dev \
+    libfreetype6 \
     && rm -rf /var/lib/apt/lists/*
 
 # Configure PulseAudio - ensure pulse user is in audio group without failing if user exists

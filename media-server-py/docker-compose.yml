@@ -12,7 +12,6 @@ services:
       - WATCHDOG_IGNORE_PATTERNS=__pycache__/*,*.pyc
       - DOCKER_ENV=1
       - ALSA_CARD=1
-      - PULSE_SERVER=unix:/tmp/pulse-socket
     devices:
       - "/dev/snd:/dev/snd"
     group_add:

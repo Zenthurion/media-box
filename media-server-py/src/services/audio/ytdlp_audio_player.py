@@ -22,8 +22,8 @@ class YtDlpAudioPlayer:
         else:
             print("No audio devices found!")
         
-        # Initialize VLC
-        self._vlc_instance = vlc.Instance('--no-xlib')
+        # Initialize VLC with ALSA
+        self._vlc_instance = vlc.Instance('--no-xlib', '--aout=alsa', '--alsa-audio-device=hw:1,0')
         self._player = self._vlc_instance.media_player_new()
         self._current_media = None
         self._status = {"is_playing": False}
