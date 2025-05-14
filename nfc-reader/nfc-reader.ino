@@ -34,7 +34,7 @@ void setup()
     Serial.println("NFC Reader Ready!");
 
     wifiManager.begin();
-    Serial.println("Button test started");
+    // Serial.println("Button test started");
 }
 
 void setLEDColor(bool red, bool green, bool blue)

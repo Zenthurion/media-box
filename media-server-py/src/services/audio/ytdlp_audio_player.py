@@ -12,8 +12,18 @@ from ..display.eink_manager import EinkDisplayManager
 
 class YtDlpAudioPlayer:
     def __init__(self, use_eink_display=True):
+        # Debug audio devices
+        print("Available audio devices:")
+        instance = vlc.Instance()
+        mods = instance.audio_output_enumerate_devices()
+        if mods:
+            for m in mods:
+                print(f"Device: {m}")
+        else:
+            print("No audio devices found!")
+        
         # Initialize VLC
-        self._vlc_instance = vlc.Instance('--no-xlib', '--aout=dummy')  # Headless mode with fallback audio
+        self._vlc_instance = vlc.Instance('--no-xlib')
         self._player = self._vlc_instance.media_player_new()
         self._current_media = None
         self._status = {"is_playing": False}
