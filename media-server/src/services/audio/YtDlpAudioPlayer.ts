@@ -5,7 +5,7 @@ import { spawn } from 'child_process';
 import { join } from 'path';
 import { createHash } from 'crypto';
 import { existsSync, mkdirSync, createReadStream, rmSync } from 'fs';
-import { EpaperDisplay } from '../display/EpaperDisplay';
+// import { EpaperDisplay } from '../display/EpaperDisplay';
 
 interface TrackInfo {
   duration: number;
@@ -21,7 +21,7 @@ export class YtDlpAudioPlayer extends EventEmitter implements IAudioPlayer {
   };
   private startTime: number = 0;
   private readonly cacheDir: string;
-  private display: EpaperDisplay;
+  // private display: EpaperDisplay;
 
   constructor() {
     super();
@@ -30,7 +30,7 @@ export class YtDlpAudioPlayer extends EventEmitter implements IAudioPlayer {
     if (!existsSync(this.cacheDir)) {
       mkdirSync(this.cacheDir, { recursive: true });
     }
-    this.display = new EpaperDisplay();
+    // this.display = new EpaperDisplay();
   }
 
   private getCacheFilePath(url: string): string {
@@ -380,10 +380,10 @@ export class YtDlpAudioPlayer extends EventEmitter implements IAudioPlayer {
         lastLines = 2; // We printed 2 lines
         
         // Update e-paper display
-        this.display.displayTrackInfo(
-          this.status.title || 'Unknown Track',
-          this.status.progress
-        ).catch(err => console.error('Display update error:', err));
+        // this.display.displayTrackInfo(
+        //   this.status.title || 'Unknown Track',
+        //   this.status.progress
+        // ).catch(err => console.error('Display update error:', err));
         
         if (this.status.progress >= 1) {
           console.log('✅ Playback complete');
@@ -397,7 +397,7 @@ export class YtDlpAudioPlayer extends EventEmitter implements IAudioPlayer {
 
   async stop(): Promise<void> {
     try {
-      await this.display.clear().catch(console.error);
+      // await this.display.clear().catch(console.error);
       if (!this.speaker && !this.ffmpeg && !this.ytDlp) {
         return; // Nothing to stop
       }

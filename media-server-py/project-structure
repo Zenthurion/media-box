@@ -1,0 +1,14 @@
+my-project/
+├── Dockerfile
+├── docker-compose.yml
+├── requirements.txt
+├── src/
+│   ├── main.py
+│   └── dev_server.py
+├── tests/
+│   └── __init__.py
+├── systemd/
+│   └── your-project.service
+├── deploy.sh
+├── setup.py
+└── .gitignore 

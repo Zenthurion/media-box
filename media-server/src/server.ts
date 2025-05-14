@@ -1,27 +1,21 @@
 import { MQTTService } from "./services/MQTTService";
-
-import { URLHandler } from './handlers/URLHandler';
+import { identifyUrl } from './handlers/URLHandler';
 import { MediaPlayer } from './services/MediaPlayer';
-import play from 'play-dl';
 
 export class Server {
 
     private mqttService: MQTTService;
-    private urlHandler: URLHandler;
     private mediaPlayer: MediaPlayer;
 
     constructor() {
         this.mqttService = new MQTTService();
-        this.urlHandler = new URLHandler();
         this.mediaPlayer = new MediaPlayer();
     }
 
     public async start() {
 
         await this.mqttService.start();
-        this.mqttService.on('url', (url: string) => {
-            this.processUrl(url);
-        });
+        this.mqttService.on('url', (url: string) => this.processUrl(url));
 
         // TODO: Add handling for stop and restart buttons
 
@@ -38,11 +32,11 @@ export class Server {
     
   private async processUrl(url: string): Promise<void> {
     try {
-      const mediaType = await this.urlHandler.determineMediaType(url);
+      const mediaType = await identifyUrl(url);
       
-      const validateUrl = await play.validate(url);
-      if (!validateUrl) {
+      if (mediaType === 'invalid') {
         console.log(`Invalid URL: ${url}`);
+        // TODO: Print to display
         return;
       }
 
@@ -53,9 +47,7 @@ export class Server {
           await this.mediaPlayer.playAudio(url);
           break;
         case 'youtube-video':
-          console.log('Casting video from YouTube');
-          await this.mediaPlayer.castVideo(url);
-          break;
+          throw new Error('Not implemented');
         default:
           console.log(`Unsupported media type for URL: ${url}`);
       }
