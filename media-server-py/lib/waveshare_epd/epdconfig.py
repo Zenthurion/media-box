@@ -20,6 +20,15 @@ else:
     CS_PIN          = 8
     BUSY_PIN        = 24
 
+# Support custom pin definitions from environment variables
+CUSTOM_PINS = os.environ.get('WAVESHARE_CUSTOM_PINS', '0') == '1'
+if CUSTOM_PINS:
+    RST_PIN = int(os.environ.get('WAVESHARE_RST_PIN', '17'))
+    DC_PIN = int(os.environ.get('WAVESHARE_DC_PIN', '25'))
+    CS_PIN = int(os.environ.get('WAVESHARE_CS_PIN', '8'))
+    BUSY_PIN = int(os.environ.get('WAVESHARE_BUSY_PIN', '24'))
+    logging.info(f"Using custom pins: RST={RST_PIN}, DC={DC_PIN}, CS={CS_PIN}, BUSY={BUSY_PIN}")
+
 # Only use WAVESHARE_SIMULATOR env var to determine simulator mode
 SIMULATOR = os.environ.get('WAVESHARE_SIMULATOR', '0') == '1'
 logging.info(f"Waveshare config initialized (simulator mode: {SIMULATOR})")
