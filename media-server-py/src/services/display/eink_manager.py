@@ -30,11 +30,15 @@ except ImportError as e:
     # Dummy implementation for testing without hardware
     class epd2in13_V3:
         class EPD:
+            # Define constants for update types
+            FULL_UPDATE = 0
+            PART_UPDATE = 1
+            
             def __init__(self):
                 self.width = 250
                 self.height = 122
             
-            def init(self): pass
+            def init(self, update=FULL_UPDATE): pass  # Add update parameter
             def Clear(self): pass
             def display(self, image): 
                 logging.info("Display updated (simulated)")
@@ -51,7 +55,7 @@ class EinkDisplayManager:
         # Initialize the display
         try:
             self.epd = epd2in13_V3.EPD()
-            self.epd.init()
+            self.epd.init(self.epd.FULL_UPDATE)
             self.epd.Clear()
             
             # Get display dimensions
