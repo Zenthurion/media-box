@@ -4,15 +4,25 @@ import os
 import logging
 import time
 
+# Check if we're using HAT variant
+HAT_VARIANT = os.environ.get('WAVESHARE_HAT', '0') == '1'
+if HAT_VARIANT:
+    logging.info("Using pin configuration for HAT variant")
+    # Pin definition for HAT variant
+    RST_PIN         = 27  # Pin 13 on HAT (adjust if your HAT uses different pins)
+    DC_PIN          = 22  # Pin 15 on HAT
+    CS_PIN          = 8   # Pin 24 on HAT
+    BUSY_PIN        = 17  # Pin 11 on HAT
+else:
+    # Standard pin definition
+    RST_PIN         = 17
+    DC_PIN          = 25
+    CS_PIN          = 8
+    BUSY_PIN        = 24
+
 # Only use WAVESHARE_SIMULATOR env var to determine simulator mode
 SIMULATOR = os.environ.get('WAVESHARE_SIMULATOR', '0') == '1'
 logging.info(f"Waveshare config initialized (simulator mode: {SIMULATOR})")
-
-# Pin definition
-RST_PIN         = 17
-DC_PIN          = 25
-CS_PIN          = 8
-BUSY_PIN        = 24
 
 # SPI device, bus = 0, device = 0
 SPI_PORT        = 0

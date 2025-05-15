@@ -124,6 +124,9 @@ class EinkDisplayManager:
         # Initialize with standby screen
         self.show_standby()
         
+        # Add a clear test pattern to verify display works
+        self._draw_test_pattern()
+        
     def truncate_text(self, text, font, max_width):
         """Truncate text to fit within max_width pixels"""
         if not text:
@@ -148,22 +151,56 @@ class EinkDisplayManager:
         self.draw = ImageDraw.Draw(self.image)
         
     def update_display(self):
-        """Update the physical display"""
+        """Update the physical display with current image buffer"""
         if self.simulation_mode:
-            logging.info("Display update (simulation mode)")
+            logging.info("Display update (simulated)")
             return
-            
+        
         try:
-            self.epd.display(self.epd.getbuffer(self.image))
+            # Log the image dimensions for debugging
+            logging.info(f"Updating display with image size: {self.image.size}")
+            
+            # Rotate if needed (0 = no rotation, 1 = 90°, 2 = 180°, 3 = 270°)
+            rotated_image = self.image.rotate(0)
+            
+            # For debugging, save the image to a file
+            try:
+                rotated_image.save('/tmp/eink_debug.png')
+                logging.info("Saved debug image to /tmp/eink_debug.png")
+            except:
+                pass
+            
+            # Convert to buffer and update display
+            buffer = self.epd.getbuffer(rotated_image)
+            self.epd.display(buffer)
+            logging.info("Physical display updated successfully")
         except Exception as e:
             logging.error(f"Error updating display: {e}")
             
     def show_standby(self):
         """Show standby screen"""
         self.clear_display()
-        self.draw.text((10, 30), "Audio Player", font=self.title_font, fill=0)
-        self.draw.text((10, 60), "Ready to play", font=self.normal_font, fill=0)
+        
+        # Draw a bold border to verify display is working
+        self.draw.rectangle((0, 0, self.width-1, self.height-1), outline=0, width=2)
+        
+        # Draw a heading
+        self.draw.text((10, 10), "Media Player Ready", font=self.title_font, fill=0)
+        
+        # Draw some informative text
+        self.draw.text((10, 40), "Waiting for", font=self.normal_font, fill=0)
+        self.draw.text((10, 60), "audio input...", font=self.normal_font, fill=0)
+        
+        # Draw a footer
+        current_time = time.strftime("%H:%M:%S")
+        self.draw.text((10, self.height - 20), f"Time: {current_time}", font=self.small_font, fill=0)
+        
         self.update_display()
+        
+        # Clear stored track info
+        self.current_title = ""
+        self.current_progress = 0
+        self.is_playing = False
         
     def show_loading(self, text="Loading..."):
         """Show loading screen"""
@@ -241,3 +278,29 @@ class EinkDisplayManager:
             else:
                 # No track playing
                 self.show_standby() 
+
+    def _draw_test_pattern(self):
+        """Draw a test pattern to verify display is working"""
+        try:
+            logging.info("Drawing test pattern on display")
+            # Clear the display
+            self.clear_display()
+            
+            # Draw a border
+            self.draw.rectangle((0, 0, self.width-1, self.height-1), outline=0)
+            
+            # Draw crossed lines
+            self.draw.line((0, 0, self.width-1, self.height-1), fill=0, width=2)
+            self.draw.line((0, self.height-1, self.width-1, 0), fill=0, width=2)
+            
+            # Draw text
+            self.draw.text((self.width//2 - 40, self.height//2 - 10), 
+                           "DISPLAY TEST", 
+                           fill=0,
+                           font=self.normal_font)
+            
+            # Update the display
+            self.update_display()
+            logging.info("Test pattern complete")
+        except Exception as e:
+            logging.error(f"Error drawing test pattern: {e}") 
