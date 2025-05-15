@@ -15,7 +15,17 @@ RUN apt-get update && apt-get install -y \
     # Add these new dependencies for PIL font support
     libfreetype6-dev \
     libfreetype6 \
+    git \
     && rm -rf /var/lib/apt/lists/*
+
+# Install Waveshare library
+RUN mkdir -p /tmp/waveshare_setup \
+    && cd /tmp/waveshare_setup \
+    && git clone https://github.com/waveshare/e-Paper.git \
+    && cd e-Paper/RaspberryPi_JetsonNano/python \
+    && python setup.py install \
+    && cd / \
+    && rm -rf /tmp/waveshare_setup
 
 # Configure PulseAudio - ensure pulse user is in audio group without failing if user exists
 RUN getent passwd pulse || useradd -m -d /var/lib/pulse pulse \

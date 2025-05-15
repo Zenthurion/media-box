@@ -14,11 +14,13 @@ if os.environ.get('DOCKER_ENV', '0') == '1':
 try:
     # First try to import from the project's lib directory
     import sys
-    lib_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), 'lib')
+    lib_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))), 'lib')
     if os.path.exists(lib_dir):
         sys.path.append(lib_dir)
+        print(f"Added lib directory to path: {lib_dir}")
     
     from waveshare_epd import epd2in13_V3
+    print("Successfully imported waveshare library")
 except ImportError:
     logging.warning("Waveshare e-Paper library not found. Using simulation mode.")
     # Dummy implementation for testing without hardware
