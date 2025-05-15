@@ -14,6 +14,8 @@ services:
       - PYTHONUNBUFFERED=1
       - WATCHDOG_IGNORE_PATTERNS=__pycache__/*,*.pyc
       - DOCKER_ENV=1
+      # Comment this line out when you want to use real hardware
+      # - WAVESHARE_SIMULATOR=1  
       - ALSA_CARD=1
       - AUDIO_CACHE_DIR=/data/audio-cache
     devices:

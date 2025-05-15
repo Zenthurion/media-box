@@ -5,11 +5,12 @@ import time
 import asyncio
 import logging
 
-# Set simulator mode for Docker environments - Make this more explicit
-SIMULATOR_MODE = os.environ.get('DOCKER_ENV', '0') == '1' or os.environ.get('WAVESHARE_SIMULATOR', '0') == '1'
+# Set simulator mode only if explicitly requested
+SIMULATOR_MODE = os.environ.get('WAVESHARE_SIMULATOR', '0') == '1'
 if SIMULATOR_MODE:
-    os.environ['WAVESHARE_SIMULATOR'] = '1'
-    logging.info("Running in simulator mode (set by environment variables)")
+    logging.info("Running in e-ink simulator mode (set by WAVESHARE_SIMULATOR)")
+else:
+    logging.info("Attempting to use real e-ink hardware")
 
 # Import the waveshare e-Paper library
 # For 2.13 inch display V3 (264x176 pixels)
