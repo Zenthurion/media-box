@@ -4,30 +4,11 @@ import os
 import logging
 import time
 
-# Check if we're using HAT variant
-HAT_VARIANT = os.environ.get('WAVESHARE_HAT', '0') == '1'
-if HAT_VARIANT:
-    logging.info("Using pin configuration for HAT variant")
-    # Pin definition for HAT variant
-    RST_PIN         = 27  # Pin 13 on HAT (adjust if your HAT uses different pins)
-    DC_PIN          = 22  # Pin 15 on HAT
-    CS_PIN          = 8   # Pin 24 on HAT
-    BUSY_PIN        = 17  # Pin 11 on HAT
-else:
-    # Standard pin definition
-    RST_PIN         = 17
-    DC_PIN          = 25
-    CS_PIN          = 8
-    BUSY_PIN        = 24
-
-# Support custom pin definitions from environment variables
-CUSTOM_PINS = os.environ.get('WAVESHARE_CUSTOM_PINS', '0') == '1'
-if CUSTOM_PINS:
-    RST_PIN = int(os.environ.get('WAVESHARE_RST_PIN', '17'))
-    DC_PIN = int(os.environ.get('WAVESHARE_DC_PIN', '25'))
-    CS_PIN = int(os.environ.get('WAVESHARE_CS_PIN', '8'))
-    BUSY_PIN = int(os.environ.get('WAVESHARE_BUSY_PIN', '24'))
-    logging.info(f"Using custom pins: RST={RST_PIN}, DC={DC_PIN}, CS={CS_PIN}, BUSY={BUSY_PIN}")
+# Standard pin definition for direct ribbon cable connection
+RST_PIN = 27   # Physical pin 13
+DC_PIN = 22    # Physical pin 15
+CS_PIN = 8     # Physical pin 24
+BUSY_PIN = 17  # Physical pin 11
 
 # Only use WAVESHARE_SIMULATOR env var to determine simulator mode
 SIMULATOR = os.environ.get('WAVESHARE_SIMULATOR', '0') == '1'
