@@ -19,7 +19,7 @@ try:
         sys.path.append(lib_dir)
         print(f"Added lib directory to path: {lib_dir}")
     
-    from waveshare_epd import epd2in13_V3
+    from lib.waveshare_epd.epd2in13_V3 import epd2in13_V3
     print("Successfully imported waveshare library")
 except ImportError:
     logging.warning("Waveshare e-Paper library not found. Using simulation mode.")

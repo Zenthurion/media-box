@@ -30,8 +30,8 @@ class YtDlpAudioPlayer:
         self._start_time = 0
         
         # Set up cache directory
-        home = os.environ.get('HOME', os.environ.get('USERPROFILE', '.'))
-        self._cache_dir = Path(home) / '.audio-cache'
+        cache_path = os.environ.get('AUDIO_CACHE_DIR', '/data/audio-cache')
+        self._cache_dir = Path(cache_path)
         self._cache_dir.mkdir(parents=True, exist_ok=True)
         
         # Event handlers

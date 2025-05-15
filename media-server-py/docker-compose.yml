@@ -3,16 +3,19 @@ version: '3.8'
 services:
   app:
     image: zenthurion/media-server-py-app:latest
+    pull_policy: always
     volumes:
       - .:/app:delegated
       - python-cache:/app/__pycache__
       - /run/user/1000/pulse:/run/user/1000/pulse
       - ./lib:/app/lib:ro
+      - audio-cache:/data/audio-cache
     environment:
       - PYTHONUNBUFFERED=1
       - WATCHDOG_IGNORE_PATTERNS=__pycache__/*,*.pyc
       - DOCKER_ENV=1
       - ALSA_CARD=1
+      - AUDIO_CACHE_DIR=/data/audio-cache
     devices:
       - "/dev/snd:/dev/snd"
     group_add:
@@ -38,3 +41,4 @@ volumes:
   python-cache:
   mosquitto-data:
   mosquitto-logs:
+  audio-cache:
