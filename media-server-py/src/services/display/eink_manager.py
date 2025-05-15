@@ -29,7 +29,7 @@ try:
         from waveshare_epd import epd2in13_V3
         print("Successfully imported waveshare library")
     else:
-        from lib.waveshare_epd.simulator import get_epd_class
+        from waveshare_epd.simulator import get_epd_class
         epd2in13_V3 = type('epd2in13_V3', (), {'EPD': get_epd_class("epd2in13_V3")})
         print("Using simulator EPD class")
 except ImportError as e:
