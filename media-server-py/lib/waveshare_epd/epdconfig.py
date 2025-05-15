@@ -4,6 +4,11 @@ import os
 import logging
 import time
 
+# Check if we're in Docker and handle appropriately
+if os.environ.get('DOCKER_ENV', '0') == '1':
+    logging.info("Running in Docker environment - setting simulation mode")
+    os.environ['WAVESHARE_SIMULATOR'] = '1'
+
 # For simulator mode
 SIMULATOR = os.environ.get('WAVESHARE_SIMULATOR', '0') == '1'
 

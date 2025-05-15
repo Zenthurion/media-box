@@ -5,9 +5,11 @@ import time
 import asyncio
 import logging
 
-# Set simulator mode for Docker environments
-if os.environ.get('DOCKER_ENV', '0') == '1':
+# Set simulator mode for Docker environments - Make this more explicit
+SIMULATOR_MODE = os.environ.get('DOCKER_ENV', '0') == '1' or os.environ.get('WAVESHARE_SIMULATOR', '0') == '1'
+if SIMULATOR_MODE:
     os.environ['WAVESHARE_SIMULATOR'] = '1'
+    logging.info("Running in simulator mode (set by environment variables)")
 
 # Import the waveshare e-Paper library
 # For 2.13 inch display V3 (264x176 pixels)
@@ -22,11 +24,16 @@ try:
         print(f"Added lib directory to path: {lib_dir}")
         print(f"Current sys.path: {sys.path}")
     
-    # Import the module, not the class
-    from waveshare_epd import epd2in13_V3
-    print("Successfully imported waveshare library")
+    # Only try to import real library if not in simulator mode
+    if not SIMULATOR_MODE:
+        from waveshare_epd import epd2in13_V3
+        print("Successfully imported waveshare library")
+    else:
+        from lib.waveshare_epd.simulator import get_epd_class
+        epd2in13_V3 = type('epd2in13_V3', (), {'EPD': get_epd_class("epd2in13_V3")})
+        print("Using simulator EPD class")
 except ImportError as e:
-    logging.warning(f"Waveshare e-Paper library not found: {e}. Using simulation mode.")
+    logging.warning(f"Using simulation mode: {e}")
     # Dummy implementation for testing without hardware
     class epd2in13_V3:
         class EPD:
@@ -37,25 +44,42 @@ except ImportError as e:
             def __init__(self):
                 self.width = 250
                 self.height = 122
+                logging.info("Initialized simulated display")
             
-            def init(self, update=FULL_UPDATE): pass  # Add update parameter
-            def Clear(self): pass
+            def init(self, update=FULL_UPDATE): 
+                logging.info(f"Display init (simulated) with update mode: {update}")
+            
+            def Clear(self): 
+                logging.info("Display cleared (simulated)")
+            
             def display(self, image): 
                 logging.info("Display updated (simulated)")
-            def sleep(self): pass
-            def getbuffer(self, image):  # Add this method to the dummy class
-                return bytearray([0xFF] * (self.width * self.height // 8))
+            
+            def sleep(self): 
+                logging.info("Display put to sleep (simulated)")
+            
+            def getbuffer(self, image):
+                logging.info("Getting buffer (simulated)")
+                # Just return an empty buffer with the right size
+                width, height = image.size
+                buffer_size = ((width + 7) // 8) * height
+                return bytearray([0xFF] * buffer_size)
 
 class EinkDisplayManager:
     """Manages display of audio information on Waveshare 2.13" e-ink display"""
     
     def __init__(self, simulation_mode=False):
-        self.simulation_mode = simulation_mode
+        # Use the global simulator mode setting or the passed parameter
+        self.simulation_mode = SIMULATOR_MODE or simulation_mode
+        logging.info(f"EinkDisplayManager initializing (simulation_mode={self.simulation_mode})")
         
         # Initialize the display
         try:
+            logging.info("Creating EPD instance")
             self.epd = epd2in13_V3.EPD()
+            logging.info("Initializing EPD")
             self.epd.init(self.epd.FULL_UPDATE)
+            logging.info("Clearing EPD")
             self.epd.Clear()
             
             # Get display dimensions
