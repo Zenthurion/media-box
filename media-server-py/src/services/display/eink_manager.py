@@ -70,56 +70,37 @@ class EinkDisplayManager:
     """Manages display of audio information on Waveshare 2.13" e-ink display"""
     
     def __init__(self, simulation_mode=False):
-        # Use the global simulator mode setting or the passed parameter
-        self.simulation_mode = SIMULATOR_MODE or simulation_mode
-        logging.info(f"EinkDisplayManager initializing (simulation_mode={self.simulation_mode})")
+        """Initialize the display"""
+        self.simulation_mode = simulation_mode or SIMULATOR_MODE
         
-        # Initialize the display
-        try:
-            logging.info("Creating EPD instance")
-            self.epd = epd2in13_V3.EPD()
-            logging.info("Initializing EPD")
-            self.epd.init(self.epd.FULL_UPDATE)
-            logging.info("Clearing EPD")
-            self.epd.Clear()
-            
-            # Get display dimensions
-            self.width = self.epd.width
-            self.height = self.epd.height
-            
-            logging.info(f"E-ink display initialized: {self.width}x{self.height}")
-        except Exception as e:
-            logging.error(f"Error initializing display: {e}")
-            self.simulation_mode = True
+        if not self.simulation_mode:
+            try:
+                # Use the exact same library that works in the official example
+                self.epd = epd2in13_V3.EPD()
+                self.epd.init()
+                self.epd.Clear()
+                self.width = self.epd.height  # Note the width/height swap for proper orientation
+                self.height = self.epd.width
+                logging.info(f"E-ink display initialized: {self.width}x{self.height}")
+            except Exception as e:
+                logging.error(f"Error initializing e-ink display: {e}")
+                self.simulation_mode = True
+                self.width = 250
+                self.height = 122
+        else:
+            logging.info("Using simulation mode for display")
             self.width = 250
             self.height = 122
-            
-        # Load fonts
-        font_dir = Path(os.path.dirname(os.path.abspath(__file__))) / "fonts"
-        font_dir.mkdir(exist_ok=True)
         
-        # Default to system fonts if custom ones aren't available
-        try:
-            self.title_font = ImageFont.truetype(str(font_dir / "dejavu-sans.bold.ttf"), 16)
-            self.normal_font = ImageFont.truetype(str(font_dir / "dejavu-sans.book.ttf"), 12)
-            self.small_font = ImageFont.truetype(str(font_dir / "dejavu-sans.book.ttf"), 10)
-        except IOError:
-            # Fallback to default fonts
-            self.title_font = ImageFont.load_default()
-            self.normal_font = ImageFont.load_default()
-            self.small_font = ImageFont.load_default()
-
-        # Create initial image buffer
-        self.image = Image.new('1', (self.width, self.height), 255)  # 255: white, 0: black
+        # Create image buffer
+        self.image = Image.new('1', (self.width, self.height), 255)
         self.draw = ImageDraw.Draw(self.image)
         
-        # Track state
-        self.current_title = ""
-        self.current_progress = 0
-        self.current_time = "0:00"
-        self.total_time = "0:00"
+        # Load fonts
+        self._load_fonts()
+        
+        # Track last update time to limit refresh rate
         self.last_update = 0
-        self.is_playing = False
         
         # Initialize with standby screen
         self.show_standby()
@@ -157,20 +138,8 @@ class EinkDisplayManager:
             return
         
         try:
-            # Log the image dimensions for debugging
-            logging.info(f"Updating display with image size: {self.image.size}")
-            
-            # Rotate if needed (0 = no rotation, 1 = 90°, 2 = 180°, 3 = 270°)
-            rotated_image = self.image.rotate(0)
-            
-            # For debugging, save the image to a file
-            try:
-                rotated_image.save('/tmp/eink_debug.png')
-                logging.info("Saved debug image to /tmp/eink_debug.png")
-            except:
-                pass
-            
-            # Convert to buffer and update display
+            # Use the same method as in the working example
+            rotated_image = self.image.rotate(0)  # No rotation if needed
             buffer = self.epd.getbuffer(rotated_image)
             self.epd.display(buffer)
             logging.info("Physical display updated successfully")
@@ -304,3 +273,19 @@ class EinkDisplayManager:
             logging.info("Test pattern complete")
         except Exception as e:
             logging.error(f"Error drawing test pattern: {e}") 
+
+    def _load_fonts(self):
+        """Load fonts for the display"""
+        font_dir = Path(os.path.dirname(os.path.abspath(__file__))) / "fonts"
+        font_dir.mkdir(exist_ok=True)
+        
+        # Default to system fonts if custom ones aren't available
+        try:
+            self.title_font = ImageFont.truetype(str(font_dir / "dejavu-sans.bold.ttf"), 16)
+            self.normal_font = ImageFont.truetype(str(font_dir / "dejavu-sans.book.ttf"), 12)
+            self.small_font = ImageFont.truetype(str(font_dir / "dejavu-sans.book.ttf"), 10)
+        except IOError:
+            # Fallback to default fonts
+            self.title_font = ImageFont.load_default()
+            self.normal_font = ImageFont.load_default()
+            self.small_font = ImageFont.load_default() 
