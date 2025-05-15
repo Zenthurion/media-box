@@ -227,3 +227,17 @@ class EinkDisplayManager:
                 self.epd.sleep()
             except Exception as e:
                 logging.error(f"Error putting display to sleep: {e}") 
+
+    def update_display_with_audio_info(self, title, is_playing, current_time, total_time, progress):
+        """Update display with current audio track information"""
+        logging.info(f"Updating display: {title} - Playing: {is_playing} - Progress: {progress:.1%}")
+        
+        if is_playing:
+            self.show_playback(title, current_time, total_time, progress)
+        else:
+            if title:
+                # If we have a title but not playing, show paused state
+                self.show_playback(f"{title} (Paused)", current_time, total_time, progress)
+            else:
+                # No track playing
+                self.show_standby() 

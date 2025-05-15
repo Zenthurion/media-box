@@ -6,6 +6,7 @@ import hashlib
 from pathlib import Path
 import vlc
 import yt_dlp
+import time
 
 # Import the EinkDisplayManager
 from ..display.eink_manager import EinkDisplayManager
@@ -53,6 +54,12 @@ class YtDlpAudioPlayer:
             except Exception as e:
                 print(f"Error initializing e-ink display: {e}")
                 self._use_eink_display = False
+
+        # Initialize display manager
+        self.display_manager = EinkDisplayManager()
+        
+        # Show initial standby screen
+        self.display_manager.show_standby()
 
     def on(self, event: str, callback: Callable) -> None:
         """Register an event handler"""
@@ -184,6 +191,9 @@ class YtDlpAudioPlayer:
             # Start progress updates
             asyncio.create_task(self._update_progress())
 
+            # Update the display
+            self._update_display()
+
         except Exception as error:
             print(f"Error in play: {error}")
             await self.stop()
@@ -272,6 +282,9 @@ class YtDlpAudioPlayer:
                 
             self._emit('stopped')
 
+            # Update display to standby
+            self.display_manager.show_standby()
+
     def get_status(self) -> Dict:
         """Get current playback status"""
         return dict(self._status)
@@ -303,4 +316,32 @@ class YtDlpAudioPlayer:
 
     async def __aexit__(self, exc_type, exc_val, exc_tb):
         """Support for async context manager"""
-        await self.stop() 
+        await self.stop()
+
+    def _update_display(self):
+        status = self._status
+        if not status.get('title'):
+            self.display_manager.show_standby()
+            return
+        
+        title = status.get('title', '')
+        is_playing = status.get('is_playing', False)
+        
+        if 'duration' in status:
+            elapsed = asyncio.get_running_loop().time() - self._start_time
+            current_time = self._format_time(int(elapsed))
+            total_time = self._format_time(int(status['duration']))
+            progress = min(elapsed / status['duration'], 1) if status['duration'] > 0 else 0
+        else:
+            current_time = '0:00'
+            total_time = '0:00'
+            progress = 0
+        
+        self.display_manager.update_display_with_audio_info(
+            title, is_playing, current_time, total_time, progress
+        )
+    
+    def _format_time(self, seconds):
+        minutes = int(seconds // 60)
+        seconds = int(seconds % 60)
+        return f"{minutes}:{seconds:02d}" 

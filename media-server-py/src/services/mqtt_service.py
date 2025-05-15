@@ -63,7 +63,8 @@ class MQTTService:
                 async with self._client as client:
                     # Set up topic handlers
                     self._topic_handlers = {
-                        config.mqtt.url_topic: self._handle_url_message
+                        config.mqtt.url_topic: self._handle_url_message,
+                        config.mqtt.audio_state_topic: self.on_audio_state_message
                     }
                     
                     # Subscribe to topics
@@ -116,6 +117,27 @@ class MQTTService:
         """Handle URL messages"""
         print(f"Processing URL: {payload}")
         await self._emit('url', payload)
+
+    async def on_audio_state_message(self, payload: str) -> None:
+        """Handle audio state messages"""
+        try:
+            # Parse the JSON payload
+            data = json.loads(payload)
+            
+            # Extract needed fields with defaults
+            title = data.get('title', '')
+            is_playing = data.get('is_playing', False)
+            current_time = data.get('current_time', '0:00')
+            total_time = data.get('total_time', '0:00')
+            progress = data.get('progress', 0.0)
+            
+            # Update the display if available
+            if hasattr(self, 'display_manager'):
+                self.display_manager.update_display_with_audio_info(
+                    title, is_playing, current_time, total_time, progress
+                )
+        except Exception as e:
+            print(f"Error handling audio state message: {e}")
 
     async def stop(self) -> None:
         """Stop the MQTT service"""
