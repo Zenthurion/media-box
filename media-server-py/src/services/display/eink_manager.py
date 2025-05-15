@@ -15,14 +15,17 @@ try:
     # First try to import from the project's lib directory
     import sys
     lib_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))), 'lib')
+    print(f"Looking for lib directory at: {lib_dir}")
+    print(f"Directory exists: {os.path.exists(lib_dir)}")
     if os.path.exists(lib_dir):
         sys.path.append(lib_dir)
         print(f"Added lib directory to path: {lib_dir}")
+        print(f"Current sys.path: {sys.path}")
     
-    from lib.waveshare_epd.epd2in13_V3 import epd2in13_V3
+    from waveshare_epd.epd2in13_V3 import EPD as epd2in13_V3
     print("Successfully imported waveshare library")
-except ImportError:
-    logging.warning("Waveshare e-Paper library not found. Using simulation mode.")
+except ImportError as e:
+    logging.warning(f"Waveshare e-Paper library not found: {e}. Using simulation mode.")
     # Dummy implementation for testing without hardware
     class epd2in13_V3:
         class EPD:
@@ -35,6 +38,8 @@ except ImportError:
             def display(self, image): 
                 logging.info("Display updated (simulated)")
             def sleep(self): pass
+            def getbuffer(self, image):  # Add this method to the dummy class
+                return bytearray([0xFF] * (self.width * self.height // 8))
 
 class EinkDisplayManager:
     """Manages display of audio information on Waveshare 2.13" e-ink display"""
