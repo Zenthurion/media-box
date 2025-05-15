@@ -13,6 +13,13 @@ class MQTTService:
         self._running = False
         self._topic_handlers = {}
         
+        # Add display manager
+        try:
+            from ..display.eink_manager import EinkDisplayManager
+            self.display_manager = EinkDisplayManager()
+        except Exception as e:
+            print(f"Failed to initialize display manager in MQTT service: {e}")
+        
     def on(self, event: str, callback: Callable[[str], Any]) -> None:
         """Register an event handler"""
         if event in self._event_handlers:
@@ -57,15 +64,17 @@ class MQTTService:
 
     async def _message_loop(self) -> None:
         """Handle incoming MQTT messages"""
-        while self._running:  # Add outer loop for reconnection attempts
+        while self._running:  # Outer loop for reconnection attempts
             try:
                 print("Attempting to establish MQTT connection...")
                 async with self._client as client:
                     # Set up topic handlers
                     self._topic_handlers = {
                         config.mqtt.url_topic: self._handle_url_message,
-                        config.mqtt.audio_state_topic: self.on_audio_state_message
                     }
+                    
+                    # Add audio state topic handler
+                    self._topic_handlers[config.mqtt.audio_state_topic] = self.on_audio_state_message
                     
                     # Subscribe to topics
                     for topic in self._topic_handlers.keys():

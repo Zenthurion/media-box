@@ -345,3 +345,17 @@ class YtDlpAudioPlayer:
         minutes = int(seconds // 60)
         seconds = int(seconds % 60)
         return f"{minutes}:{seconds:02d}" 
+
+    async def _publish_status(self):
+        """Publish current status to MQTT"""
+        try:
+            from aiomqtt import Client
+            from config.config import config
+            
+            status = self.get_status()
+            async with Client(hostname=config.mqtt.host, port=config.mqtt.port) as client:
+                payload = json.dumps(status)
+                await client.publish(config.mqtt.audio_state_topic, payload)
+                print(f"Published status to {config.mqtt.audio_state_topic}")
+        except Exception as e:
+            print(f"Error publishing status: {e}") 

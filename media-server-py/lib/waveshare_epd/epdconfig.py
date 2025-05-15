@@ -108,4 +108,11 @@ def module_exit():
 digital_write = epd_digital_write
 digital_read = epd_digital_read
 delay_ms = epd_delay_ms
-spi_writebyte = spi_transfer 
+spi_writebyte = spi_transfer
+
+def spi_writebyte2(data):
+    """Compatibility function for spi_writebyte2"""
+    return spi_transfer(data)
+
+# Make it available at module level
+spi_writebyte2 = spi_writebyte2 
