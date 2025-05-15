@@ -13,7 +13,7 @@ else:
     logging.info("Attempting to use real e-ink hardware")
 
 # Import the waveshare e-Paper library
-# For 2.13 inch display V3 (264x176 pixels)
+# For 2.13 inch display V4 (264x176 pixels)
 try:
     # First try to import from the project's lib directory
     import sys
@@ -27,16 +27,16 @@ try:
     
     # Only try to import real library if not in simulator mode
     if not SIMULATOR_MODE:
-        from waveshare_epd import epd2in13_V3
-        print("Successfully imported waveshare library")
+        from waveshare_epd import epd2in13_V4
+        print("Successfully imported waveshare V4 library")
     else:
         from waveshare_epd.simulator import get_epd_class
-        epd2in13_V3 = type('epd2in13_V3', (), {'EPD': get_epd_class("epd2in13_V3")})
+        epd2in13_V4 = type('epd2in13_V4', (), {'EPD': get_epd_class("epd2in13_V4")})
         print("Using simulator EPD class")
 except ImportError as e:
     logging.warning(f"Using simulation mode: {e}")
     # Dummy implementation for testing without hardware
-    class epd2in13_V3:
+    class epd2in13_V4:
         class EPD:
             # Define constants for update types
             FULL_UPDATE = 0
@@ -75,13 +75,13 @@ class EinkDisplayManager:
         
         if not self.simulation_mode:
             try:
-                # Use the exact same library that works in the official example
-                self.epd = epd2in13_V3.EPD()
+                # Use V4 library
+                self.epd = epd2in13_V4.EPD()
                 self.epd.init()
                 self.epd.Clear()
                 self.width = self.epd.height  # Note the width/height swap for proper orientation
                 self.height = self.epd.width
-                logging.info(f"E-ink display initialized: {self.width}x{self.height}")
+                logging.info(f"E-ink display V4 initialized: {self.width}x{self.height}")
             except Exception as e:
                 logging.error(f"Error initializing e-ink display: {e}")
                 self.simulation_mode = True

@@ -16,6 +16,11 @@ RUN apt-get update && apt-get install -y \
     libfreetype6-dev \
     libfreetype6 \
     git \
+    python3-pip \
+    python3-pil \
+    python3-numpy \
+    spidev \
+    RPi.GPIO \
     && rm -rf /var/lib/apt/lists/*
 
 # Configure PulseAudio - ensure pulse user is in audio group without failing if user exists
@@ -42,6 +47,13 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy the rest of the application
 COPY src/ ./src/
+
+# Install Python dependencies
+RUN pip3 install spidev RPi.GPIO
+
+# Set environment variables
+ENV PYTHONUNBUFFERED=1
+ENV WAVESHARE_HAT=1
 
 # Run the application
 CMD ["python", "-m", "src.main"]

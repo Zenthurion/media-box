@@ -26,9 +26,15 @@ services:
       - "/dev/spidev0.1:/dev/spidev0.1"
     group_add:
       - audio
+      - spi
+      - gpio
     ports:
       - "8000:8000"
-    command: python src/main.py
+    command: >
+      bash -c "
+        pip install RPi.GPIO spidev numpy==1.23.3 &&
+        python src/main.py
+      "
     tty: true
     stdin_open: true
     privileged: true

@@ -7,9 +7,16 @@ yt-dlp>=2023.0.0
 asyncio>=3.4.3
 python-vlc>=3.0.20000
 aiomqtt==2.0.0
-Pillow==10.0.0  # For image manipulation
+Pillow==9.2.0  # For image manipulation
 
 # Only needed when not in simulator mode
 # These are often already installed on Raspberry Pi OS
-RPi.GPIO>=0.7.0
-spidev>=3.5 
+RPi.GPIO==0.7.1
+spidev==3.5
+numpy==1.23.3
+
+# Add to your existing requirements
+spidev==3.5
+RPi.GPIO==0.7.1
+Pillow==9.2.0
+numpy==1.23.3 
