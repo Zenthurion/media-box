@@ -39,14 +39,22 @@ class ShutdownManager:
         
         # Show logo before shutdown
         if self.display_manager:
-            logging.info("Displaying logo before shutdown")
-            self.display_manager.show_logo()
-            
-            # Give time for display to update
-            time.sleep(2)
-            
-            # Cleanup display
-            self.display_manager.cleanup()
+            try:
+                logging.info("Displaying logo before shutdown")
+                self.display_manager.show_logo()
+                
+                # Increase time for display to update - Docker gives 10 seconds by default
+                logging.info("Waiting for display to update...")
+                time.sleep(3)
+                
+                # Cleanup display
+                logging.info("Cleaning up display")
+                self.display_manager.cleanup()
+                logging.info("Display cleanup complete")
+            except Exception as e:
+                logging.error(f"Error during shutdown display: {e}")
+                import traceback
+                logging.error(traceback.format_exc())
         
         logging.info("Exiting application")
         sys.exit(0)
@@ -72,4 +80,17 @@ def main():
         pass
 
 if __name__ == "__main__":
-    main() 
+    # Configure logging
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    )
+    
+    # Check if we're testing shutdown sequence
+    if len(sys.argv) > 1 and sys.argv[1] == "--test-shutdown":
+        print("Setting up shutdown manager...")
+        shutdown_manager.setup()
+        print("Triggering shutdown sequence...")
+        shutdown_manager.handle_shutdown(signal.SIGTERM, None)
+    else:
+        main() 

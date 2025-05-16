@@ -57,8 +57,10 @@ ENV WAVESHARE_HAT=1
 # Add this line to your Dockerfile to copy the logo file
 COPY logo.png /app/logo.png
 
-# Run the application
-CMD ["python3", "-u", "/app/src/app.py"]
+# Add these lines before CMD
+COPY entrypoint.sh /app/entrypoint.sh
+RUN chmod +x /app/entrypoint.sh
 
-# Or if you use an entrypoint script:
+# Change CMD to use the entrypoint script
 ENTRYPOINT ["/app/entrypoint.sh"]
+CMD []
