@@ -61,6 +61,10 @@ class YtDlpAudioPlayer:
         # Show initial standby screen
         self.display_manager.show_standby()
 
+        # Add these lines:
+        self.last_update_time = 0
+        self.last_progress = 0
+
     def on(self, event: str, callback: Callable) -> None:
         """Register an event handler"""
         if event in self._event_handlers:
@@ -253,14 +257,20 @@ class YtDlpAudioPlayer:
                 
                 last_lines = 2
                 
-                # Update e-ink display
-                if self._use_eink_display:
-                    await self._display.update_progress_display(
-                        self._status.get('title', 'Unknown'),
-                        current_time_str,
-                        total_time_str,
-                        progress
-                    )
+                # Update e-ink display - only update at most every 10 seconds or 5% progress
+                time_now = asyncio.get_running_loop().time()
+                if time_now - self.last_update_time > 10 or abs(progress - self.last_progress) > 0.05:
+                    self.last_update_time = time_now
+                    self.last_progress = progress
+                    
+                    # Update e-ink display
+                    if self._use_eink_display:
+                        await self._display.update_progress_display(
+                            self._status.get('title', 'Unknown'),
+                            current_time_str,
+                            total_time_str,
+                            progress
+                        )
                 
                 if progress >= 1:
                     print("✅ Playback complete")

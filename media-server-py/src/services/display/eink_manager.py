@@ -77,7 +77,8 @@ class EinkDisplayManager:
             try:
                 # Use V4 library
                 self.epd = epd2in13_V4.EPD()
-                self.epd.init()
+                # Initialize with FULL_UPDATE for initial screen
+                self.epd.init(self.epd.FULL_UPDATE)
                 self.epd.Clear()
                 self.width = self.epd.height  # Note the width/height swap for proper orientation
                 self.height = self.epd.width
@@ -101,6 +102,14 @@ class EinkDisplayManager:
         
         # Track last update time to limit refresh rate
         self.last_update = 0
+        self.last_progress = 0
+        
+        # Keep track of current display state
+        self.current_title = ""
+        self.current_progress = 0
+        self.current_time = "0:00"
+        self.total_time = "0:00"
+        self.is_playing = False
         
         # Initialize with standby screen
         self.show_standby()
@@ -131,18 +140,24 @@ class EinkDisplayManager:
         self.image = Image.new('1', (self.width, self.height), 255)
         self.draw = ImageDraw.Draw(self.image)
         
-    def update_display(self):
+    def update_display(self, use_partial_update=False):
         """Update the physical display with current image buffer"""
         if self.simulation_mode:
-            logging.info("Display update (simulated)")
+            logging.info(f"Display update (simulated) - Partial: {use_partial_update}")
             return
         
         try:
+            # Initialize with partial update if requested
+            if use_partial_update:
+                self.epd.init(self.epd.PART_UPDATE)
+            else:
+                self.epd.init(self.epd.FULL_UPDATE)
+            
             # Use the same method as in the working example
             rotated_image = self.image.rotate(0)  # No rotation if needed
             buffer = self.epd.getbuffer(rotated_image)
             self.epd.display(buffer)
-            logging.info("Physical display updated successfully")
+            logging.info(f"Physical display updated successfully - Partial: {use_partial_update}")
         except Exception as e:
             logging.error(f"Error updating display: {e}")
             
@@ -161,30 +176,86 @@ class EinkDisplayManager:
         self.draw.text((10, 60), "audio input...", font=self.normal_font, fill=0)
         
         # Draw a footer
-        current_time = time.strftime("%H:%M:%S")
+        current_time = time.strftime("%H:%M")  # Removed seconds
         self.draw.text((10, self.height - 20), f"Time: {current_time}", font=self.small_font, fill=0)
         
-        self.update_display()
+        # Use full update for standby screen
+        self.update_display(use_partial_update=False)
         
         # Clear stored track info
         self.current_title = ""
         self.current_progress = 0
+        self.current_time = "0:00"
+        self.total_time = "0:00"
         self.is_playing = False
         
     def show_loading(self, text="Loading..."):
         """Show loading screen"""
         self.clear_display()
         self.draw.text((10, 30), text, font=self.title_font, fill=0)
-        self.update_display()
+        
+        # Use full update for loading screen
+        self.update_display(use_partial_update=False)
         
     def show_playback(self, title, current_time, total_time, progress):
         """Show playback information"""
+        # Check if only the progress and time need update (for partial refresh)
+        progress_only_update = (
+            title == self.current_title and 
+            abs(progress - self.current_progress) < 0.5  # Only significant progress changes
+        )
+        
+        if progress_only_update:
+            # Just update the progress section
+            self._update_progress_section(current_time, total_time, progress)
+            return
+            
+        # Full screen update needed
         self.clear_display()
         
         # Title (truncate if too long)
         title_truncated = self.truncate_text(title, self.title_font, self.width - 20)
         self.draw.text((10, 10), title_truncated, font=self.title_font, fill=0)
         
+        # Draw progress bar and time
+        self._draw_progress_bar(current_time, total_time, progress)
+        
+        # Store current values
+        self.current_title = title
+        self.current_time = current_time
+        self.total_time = total_time
+        self.current_progress = progress
+        
+        # Use full update for full screen refresh
+        self.update_display(use_partial_update=False)
+    
+    def _update_progress_section(self, current_time, total_time, progress):
+        """Update only the progress bar and time sections (for partial refresh)"""
+        # Calculate positions
+        bar_width = self.width - 20
+        bar_height = 10
+        bar_left = 10
+        bar_top = 50
+        
+        # Clear just the progress bar and time area
+        self.draw.rectangle(
+            (bar_left - 2, bar_top - 2, bar_left + bar_width + 2, self.height - 10),
+            fill=255
+        )
+        
+        # Redraw progress bar and time
+        self._draw_progress_bar(current_time, total_time, progress)
+        
+        # Store current values
+        self.current_time = current_time
+        self.total_time = total_time
+        self.current_progress = progress
+        
+        # Use partial update for minimal refresh
+        self.update_display(use_partial_update=True)
+    
+    def _draw_progress_bar(self, current_time, total_time, progress):
+        """Draw progress bar and time display"""
         # Progress bar
         bar_width = self.width - 20
         bar_height = 10
@@ -202,30 +273,50 @@ class EinkDisplayManager:
                 fill=0
             )
         
-        # Time display
-        time_text = f"{current_time} / {total_time}"
+        # Only show total duration, not current time
+        # This prevents constant updating of the time display
+        approx_min = int(float(progress) * float(self._parse_time_to_seconds(total_time)) / 60)
+        time_text = f"~{approx_min} min / {total_time}" 
         self.draw.text((10, 70), time_text, font=self.normal_font, fill=0)
-        
-        self.update_display()
-        
+    
+    def _parse_time_to_seconds(self, time_str):
+        """Convert a time string (MM:SS) to seconds"""
+        try:
+            parts = time_str.split(':')
+            if len(parts) == 2:
+                return int(parts[0]) * 60 + int(parts[1])
+            return 0
+        except (ValueError, IndexError):
+            return 0
+    
     async def update_progress_display(self, title, current_time, total_time, progress):
         """Update the display with current progress (with rate limiting)"""
-        # Store current values
-        self.current_title = title
-        self.current_progress = progress
-        self.current_time = current_time
-        self.total_time = total_time
+        # Store current values for future reference
         self.is_playing = True
         
         # Rate limit updates to avoid flickering and extend display life
-        # E-ink displays shouldn't be refreshed too frequently
-        current_time = time.time()
-        if current_time - self.last_update < 5.0:  # Update at most every 5 seconds
-            return
-            
-        self.last_update = current_time
-        self.show_playback(title, current_time, total_time, progress)
+        current_time_sec = time.time()
         
+        # Calculate percentage change in progress
+        progress_delta = abs(progress - self.current_progress)
+        
+        # Only update if:
+        # 1. It's been at least 10 seconds since last update, or
+        # 2. Progress has changed by at least 5%
+        if (current_time_sec - self.last_update < 10.0 and progress_delta < 0.05):
+            return
+        
+        # Remember last update time
+        self.last_update = current_time_sec
+        
+        # Determine if we need full refresh or partial refresh
+        if title != self.current_title:
+            # Title changed - do a full refresh
+            self.show_playback(title, current_time, total_time, progress)
+        else:
+            # Only progress changed - use partial refresh
+            self._update_progress_section(current_time, total_time, progress)
+
     def cleanup(self):
         """Clean up the display when shutting down"""
         if not self.simulation_mode:
@@ -239,14 +330,34 @@ class EinkDisplayManager:
         logging.info(f"Updating display: {title} - Playing: {is_playing} - Progress: {progress:.1%}")
         
         if is_playing:
-            self.show_playback(title, current_time, total_time, progress)
+            # Only update if significant changes
+            progress_delta = abs(progress - self.current_progress)
+            time_delta = time.time() - self.last_update
+            
+            if (title != self.current_title or 
+                time_delta > 10.0 or 
+                progress_delta > 0.05):
+                
+                if title != self.current_title:
+                    # Full refresh for new title
+                    self.show_playback(title, current_time, total_time, progress)
+                else:
+                    # Partial refresh for progress updates
+                    self._update_progress_section(current_time, total_time, progress)
+                
+                self.last_update = time.time()
+                self.current_progress = progress
+                self.current_title = title
         else:
             if title:
                 # If we have a title but not playing, show paused state
-                self.show_playback(f"{title} (Paused)", current_time, total_time, progress)
+                pause_title = f"{title} (Paused)"
+                if pause_title != self.current_title:
+                    self.show_playback(pause_title, current_time, total_time, progress)
+                    self.current_title = pause_title
             else:
                 # No track playing
-                self.show_standby() 
+                self.show_standby()
 
     def _draw_test_pattern(self):
         """Draw a test pattern to verify display is working"""

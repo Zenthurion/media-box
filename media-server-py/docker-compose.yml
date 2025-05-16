@@ -36,6 +36,12 @@ services:
     privileged: true
     depends_on:
       - mqtt
+    logging:
+      driver: "json-file"
+      options:
+        timestamps: "true"
+        max-size: "10m"
+        max-file: "3"
 
   mqtt:
     image: eclipse-mosquitto:latest
