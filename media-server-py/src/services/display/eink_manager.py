@@ -77,13 +77,21 @@ class EinkDisplayManager:
             try:
                 # Use V4 library
                 self.epd = epd2in13_V4.EPD()
-                # Log the update modes available
-                self.FULL_UPDATE = self.epd.FULL_UPDATE
-                self.PART_UPDATE = self.epd.PART_UPDATE
-                logging.info(f"Available update modes - FULL: {self.FULL_UPDATE}, PARTIAL: {self.PART_UPDATE}")
+                
+                # Check if the update modes are available, otherwise define defaults
+                # Some versions of the library don't have these constants
+                if hasattr(self.epd, 'FULL_UPDATE'):
+                    self.FULL_UPDATE = self.epd.FULL_UPDATE
+                    self.PART_UPDATE = self.epd.PART_UPDATE
+                    logging.info(f"Using library-defined update modes - FULL: {self.FULL_UPDATE}, PARTIAL: {self.PART_UPDATE}")
+                else:
+                    # Define fallback values based on the waveshare documentation
+                    logging.info("Library doesn't provide update mode constants, using defaults")
+                    self.FULL_UPDATE = 0
+                    self.PART_UPDATE = 1
                 
                 # Initialize with FULL_UPDATE for initial screen
-                self.epd.init(self.epd.FULL_UPDATE)
+                self.epd.init(self.FULL_UPDATE)
                 self.epd.Clear()
                 self.width = self.epd.height  # Note the width/height swap for proper orientation
                 self.height = self.epd.width

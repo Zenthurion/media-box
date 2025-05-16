@@ -33,7 +33,14 @@ def main():
     try:
         epd = epd2in13_V4.EPD()
         logging.info("Initializing display...")
-        epd.init(epd.FULL_UPDATE)
+        
+        # Define fallback values if needed
+        FULL_UPDATE = getattr(epd, 'FULL_UPDATE', 0)
+        PART_UPDATE = getattr(epd, 'PART_UPDATE', 1)
+        
+        logging.info(f"Using update modes - FULL: {FULL_UPDATE}, PART: {PART_UPDATE}")
+        
+        epd.init(FULL_UPDATE)
         epd.Clear()
         
         # Display dimensions
