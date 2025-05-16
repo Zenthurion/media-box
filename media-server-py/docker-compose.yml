@@ -10,6 +10,7 @@ services:
       - /run/user/1000/pulse:/run/user/1000/pulse
       - ./lib:/app/lib:ro
       - audio-cache:/data/audio-cache
+      - ./logo.png:/app/logo.png
     environment:
       - PYTHONUNBUFFERED=1
       - WATCHDOG_IGNORE_PATTERNS=__pycache__/*,*.pyc

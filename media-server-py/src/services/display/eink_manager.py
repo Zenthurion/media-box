@@ -77,6 +77,11 @@ class EinkDisplayManager:
             try:
                 # Use V4 library
                 self.epd = epd2in13_V4.EPD()
+                # Log the update modes available
+                self.FULL_UPDATE = self.epd.FULL_UPDATE
+                self.PART_UPDATE = self.epd.PART_UPDATE
+                logging.info(f"Available update modes - FULL: {self.FULL_UPDATE}, PARTIAL: {self.PART_UPDATE}")
+                
                 # Initialize with FULL_UPDATE for initial screen
                 self.epd.init(self.epd.FULL_UPDATE)
                 self.epd.Clear()
@@ -92,6 +97,8 @@ class EinkDisplayManager:
             logging.info("Using simulation mode for display")
             self.width = 250
             self.height = 122
+            self.FULL_UPDATE = 0
+            self.PART_UPDATE = 1
         
         # Create image buffer
         self.image = Image.new('1', (self.width, self.height), 255)
@@ -111,11 +118,19 @@ class EinkDisplayManager:
         self.total_time = "0:00"
         self.is_playing = False
         
-        # Initialize with standby screen
-        self.show_standby()
+        logging.info("Starting display initialization sequence...")
         
-        # Add a clear test pattern to verify display works
-        self._draw_test_pattern()
+        # First try to show the logo
+        logo_success = self.show_logo()
+        logging.info(f"Logo display {'successful' if logo_success else 'failed'}")
+        
+        if not logo_success:
+            # Only show standby if logo display failed
+            logging.info("Showing standby screen after logo display failed")
+            self.show_standby()
+        
+        # No test pattern at startup
+        # self._draw_test_pattern()
         
     def truncate_text(self, text, font, max_width):
         """Truncate text to fit within max_width pixels"""
@@ -147,11 +162,12 @@ class EinkDisplayManager:
             return
         
         try:
+            # Log what we're about to do
+            update_mode = self.PART_UPDATE if use_partial_update else self.FULL_UPDATE
+            logging.info(f"Initializing display with mode: {update_mode} (partial={use_partial_update})")
+            
             # Initialize with partial update if requested
-            if use_partial_update:
-                self.epd.init(self.epd.PART_UPDATE)
-            else:
-                self.epd.init(self.epd.FULL_UPDATE)
+            self.epd.init(update_mode)
             
             # Use the same method as in the working example
             rotated_image = self.image.rotate(0)  # No rotation if needed
@@ -160,6 +176,8 @@ class EinkDisplayManager:
             logging.info(f"Physical display updated successfully - Partial: {use_partial_update}")
         except Exception as e:
             logging.error(f"Error updating display: {e}")
+            import traceback
+            logging.error(traceback.format_exc())
             
     def show_standby(self):
         """Show standby screen"""
@@ -231,6 +249,8 @@ class EinkDisplayManager:
     
     def _update_progress_section(self, current_time, total_time, progress):
         """Update only the progress bar and time sections (for partial refresh)"""
+        logging.info(f"Doing partial update for progress: {progress:.2f}")
+        
         # Calculate positions
         bar_width = self.width - 20
         bar_height = 10
@@ -252,6 +272,7 @@ class EinkDisplayManager:
         self.current_progress = progress
         
         # Use partial update for minimal refresh
+        logging.info("Using PARTIAL UPDATE for progress bar")
         self.update_display(use_partial_update=True)
     
     def _draw_progress_bar(self, current_time, total_time, progress):
@@ -379,11 +400,22 @@ class EinkDisplayManager:
                            fill=0,
                            font=self.normal_font)
             
-            # Update the display
-            self.update_display()
+            # Update the display with full update
+            logging.info("Doing FULL update test pattern")
+            self.update_display(use_partial_update=False)
+            
+            # Wait a moment
+            import time
+            time.sleep(2)
+            
+            # Now try a partial update of just one section
+            logging.info("Doing PARTIAL update test")
+            self.draw.rectangle((10, 90, 100, 110), fill=0)
+            self.update_display(use_partial_update=True)
+            
             logging.info("Test pattern complete")
         except Exception as e:
-            logging.error(f"Error drawing test pattern: {e}") 
+            logging.error(f"Error drawing test pattern: {e}")
 
     def _load_fonts(self):
         """Load fonts for the display"""
@@ -400,3 +432,108 @@ class EinkDisplayManager:
             self.title_font = ImageFont.load_default()
             self.normal_font = ImageFont.load_default()
             self.small_font = ImageFont.load_default() 
+
+    def show_logo(self):
+        """Show the logo image at startup"""
+        logging.info("Attempting to show logo at startup...")
+        try:
+            # Look for logo in the root directory and multiple possible locations
+            project_root = Path(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))))
+            logging.info(f"Project root directory: {project_root}")
+            
+            # Try multiple possible locations with debug output
+            possible_paths = [
+                project_root / "logo.png",
+                Path(os.path.dirname(os.path.abspath(__file__))) / "logo.png",
+                Path("/app/logo.png"),  # For Docker environment
+                Path("logo.png"),       # Current working directory
+            ]
+            
+            # Debug output for all paths
+            for path in possible_paths:
+                logging.info(f"Checking for logo at: {path} (exists: {path.exists()})")
+            
+            logo_path = None
+            for path in possible_paths:
+                if path.exists():
+                    logo_path = path
+                    break
+            
+            if logo_path:
+                logging.info(f"Found logo at {logo_path}")
+                try:
+                    logo_img = Image.open(logo_path)
+                    logging.info(f"Successfully opened logo image: {logo_img.size} mode={logo_img.mode}")
+                    
+                    # Resize if necessary to fit display
+                    if logo_img.size != (self.width, self.height):
+                        logging.info(f"Resizing logo from {logo_img.size} to {(self.width, self.height)}")
+                        logo_img = logo_img.resize((self.width, self.height), Image.LANCZOS)
+                    
+                    # Convert to 1-bit color depth if needed
+                    if logo_img.mode != '1':
+                        logging.info(f"Converting logo from {logo_img.mode} to 1-bit mode")
+                        logo_img = logo_img.convert('1')
+                    
+                    # Clear display first
+                    logging.info("Clearing display before showing logo")
+                    self.clear_display()
+                    
+                    # Replace the current image buffer with the logo
+                    self.image = logo_img
+                    self.draw = ImageDraw.Draw(self.image)
+                    
+                    # Update display with logo
+                    logging.info("Sending logo to display...")
+                    self.update_display(use_partial_update=False)
+                    logging.info("Logo displayed successfully")
+                    
+                    # Wait a moment to display the logo
+                    logging.info("Waiting 3 seconds to show logo...")
+                    time.sleep(3)
+                    logging.info("Logo display complete")
+                    
+                    # Return True to indicate success
+                    return True
+                except Exception as e:
+                    logging.error(f"Error processing logo image: {e}")
+                    import traceback
+                    logging.error(traceback.format_exc())
+            else:
+                logging.warning(f"Logo file not found in any of these locations: {possible_paths}")
+                # Try the debug logo as fallback
+                logging.info("Trying debug logo instead...")
+                return self.draw_debug_logo()
+        except Exception as e:
+            logging.error(f"Error in show_logo: {e}")
+            import traceback
+            logging.error(traceback.format_exc())
+            
+        # If we get here, try the debug logo
+        logging.info("Attempting debug logo after failure...")
+        return self.draw_debug_logo()
+
+    def draw_debug_logo(self):
+        """Draw a simple logo for debugging"""
+        logging.info("Creating debug logo image")
+        self.clear_display()
+        
+        # Draw a border
+        self.draw.rectangle((0, 0, self.width-1, self.height-1), outline=0, width=3)
+        
+        # Draw diagonal lines
+        self.draw.line((0, 0, self.width-1, self.height-1), fill=0, width=2)
+        self.draw.line((0, self.height-1, self.width-1, 0), fill=0, width=2)
+        
+        # Draw text in the center
+        self.draw.text((self.width//2 - 40, self.height//2 - 10), 
+                      "DEBUG LOGO", 
+                      fill=0,
+                      font=self.title_font)
+        
+        # Update the display with full update
+        logging.info("Displaying debug logo...")
+        self.update_display(use_partial_update=False)
+        logging.info("Debug logo displayed")
+        time.sleep(3)
+        return True 

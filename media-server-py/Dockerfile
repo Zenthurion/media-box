@@ -54,5 +54,8 @@ RUN pip3 install spidev RPi.GPIO
 ENV PYTHONUNBUFFERED=1
 ENV WAVESHARE_HAT=1
 
+# Add this line to your Dockerfile to copy the logo file
+COPY logo.png /app/logo.png
+
 # Run the application
 CMD ["python", "-m", "src.main"]

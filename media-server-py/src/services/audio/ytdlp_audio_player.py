@@ -46,24 +46,25 @@ class YtDlpAudioPlayer:
         self._event_manager.event_attach(vlc.EventType.MediaPlayerEndReached, 
                                        self._on_playback_finished)
 
-        # Initialize e-ink display
+        # Initialize e-ink display - ONLY ONE INSTANCE
         self._use_eink_display = use_eink_display
         if self._use_eink_display:
             try:
-                self._display = EinkDisplayManager()
+                self.display_manager = EinkDisplayManager()
             except Exception as e:
                 print(f"Error initializing e-ink display: {e}")
                 self._use_eink_display = False
-
-        # Initialize display manager
-        self.display_manager = EinkDisplayManager()
+                self.display_manager = None
+        else:
+            self.display_manager = None
         
-        # Show initial standby screen
-        self.display_manager.show_standby()
-
-        # Add these lines:
+        # These properties track update timing
         self.last_update_time = 0
         self.last_progress = 0
+        
+        # Show initial standby screen
+        if self.display_manager:
+            self.display_manager.show_standby()
 
     def on(self, event: str, callback: Callable) -> None:
         """Register an event handler"""
@@ -81,8 +82,8 @@ class YtDlpAudioPlayer:
         self._status["is_playing"] = False
         print('Debug - Stopped from finish')
         # Update the display to standby mode
-        if self._use_eink_display:
-            self._display.show_standby()
+        if self._use_eink_display and self.display_manager:
+            self.display_manager.show_standby()
         self._emit('stopped')
 
     def _get_cache_file_path(self, url: str) -> Path:
@@ -143,8 +144,8 @@ class YtDlpAudioPlayer:
             await asyncio.sleep(0.1)  # Small delay for cleanup
 
             # Show loading screen on e-ink display
-            if self._use_eink_display:
-                self._display.show_loading("Downloading...")
+            if self._use_eink_display and self.display_manager:
+                self.display_manager.show_loading("Downloading...")
 
             print(f"Checking cache for {url}")
             cache_file = self._get_cache_file_path(url)
@@ -176,7 +177,7 @@ class YtDlpAudioPlayer:
             if self._use_eink_display:
                 current_time = "0:00"
                 total_time = f"{duration_min}:{duration_sec:02d}"
-                self._display.show_playback(track_info['title'], current_time, total_time, 0)
+                self.display_manager.show_playback(track_info['title'], current_time, total_time, 0)
 
             # Play the cached file
             self._current_media = self._vlc_instance.media_new(str(cache_file))
@@ -196,7 +197,13 @@ class YtDlpAudioPlayer:
             asyncio.create_task(self._update_progress())
 
             # Update the display
-            self._update_display()
+            self.display_manager.update_display_with_audio_info(
+                track_info['title'],
+                True,
+                "0:00",
+                f"{duration_min}:{duration_sec:02d}",
+                0
+            )
 
         except Exception as error:
             print(f"Error in play: {error}")
@@ -264,8 +271,8 @@ class YtDlpAudioPlayer:
                     self.last_progress = progress
                     
                     # Update e-ink display
-                    if self._use_eink_display:
-                        await self._display.update_progress_display(
+                    if self._use_eink_display and self.display_manager:
+                        await self.display_manager.update_progress_display(
                             self._status.get('title', 'Unknown'),
                             current_time_str,
                             total_time_str,
@@ -274,8 +281,8 @@ class YtDlpAudioPlayer:
                 
                 if progress >= 1:
                     print("✅ Playback complete")
-                    if self._use_eink_display:
-                        self._display.show_standby()
+                    if self._use_eink_display and self.display_manager:
+                        self.display_manager.show_standby()
                     break
             
             await asyncio.sleep(1)
@@ -288,12 +295,13 @@ class YtDlpAudioPlayer:
             
             # Update e-ink display to standby mode
             if self._use_eink_display:
-                self._display.show_standby()
+                self.display_manager.show_standby()
                 
             self._emit('stopped')
 
             # Update display to standby
-            self.display_manager.show_standby()
+            if self.display_manager:
+                self.display_manager.show_standby()
 
     def get_status(self) -> Dict:
         """Get current playback status"""
@@ -317,8 +325,8 @@ class YtDlpAudioPlayer:
         
         # Clean up the e-ink display
         if hasattr(self, '_use_eink_display') and self._use_eink_display:
-            if hasattr(self, '_display'):
-                self._display.cleanup()
+            if hasattr(self, 'display_manager') and self.display_manager:
+                self.display_manager.cleanup()
 
     async def __aenter__(self):
         """Support for async context manager"""
@@ -328,29 +336,6 @@ class YtDlpAudioPlayer:
         """Support for async context manager"""
         await self.stop()
 
-    def _update_display(self):
-        status = self._status
-        if not status.get('title'):
-            self.display_manager.show_standby()
-            return
-        
-        title = status.get('title', '')
-        is_playing = status.get('is_playing', False)
-        
-        if 'duration' in status:
-            elapsed = asyncio.get_running_loop().time() - self._start_time
-            current_time = self._format_time(int(elapsed))
-            total_time = self._format_time(int(status['duration']))
-            progress = min(elapsed / status['duration'], 1) if status['duration'] > 0 else 0
-        else:
-            current_time = '0:00'
-            total_time = '0:00'
-            progress = 0
-        
-        self.display_manager.update_display_with_audio_info(
-            title, is_playing, current_time, total_time, progress
-        )
-    
     def _format_time(self, seconds):
         minutes = int(seconds // 60)
         seconds = int(seconds % 60)
