@@ -78,20 +78,18 @@ class EinkDisplayManager:
                 # Use V4 library
                 self.epd = epd2in13_V4.EPD()
                 
-                # Check if the update modes are available, otherwise define defaults
-                # Some versions of the library don't have these constants
-                if hasattr(self.epd, 'FULL_UPDATE'):
-                    self.FULL_UPDATE = self.epd.FULL_UPDATE
-                    self.PART_UPDATE = self.epd.PART_UPDATE
-                    logging.info(f"Using library-defined update modes - FULL: {self.FULL_UPDATE}, PARTIAL: {self.PART_UPDATE}")
-                else:
-                    # Define fallback values based on the waveshare documentation
-                    logging.info("Library doesn't provide update mode constants, using defaults")
-                    self.FULL_UPDATE = 0
-                    self.PART_UPDATE = 1
+                # Set default update modes (we'll ignore them if not needed)
+                self.FULL_UPDATE = 0
+                self.PART_UPDATE = 1
                 
-                # Initialize with FULL_UPDATE for initial screen
-                self.epd.init(self.FULL_UPDATE)
+                # Try to initialize with parameters first
+                try:
+                    self.epd.init(self.FULL_UPDATE)
+                except TypeError:
+                    # If that fails, try without parameters
+                    logging.info("EPD init() doesn't accept parameters, calling without arguments")
+                    self.epd.init()
+                    
                 self.epd.Clear()
                 self.width = self.epd.height  # Note the width/height swap for proper orientation
                 self.height = self.epd.width
@@ -174,8 +172,14 @@ class EinkDisplayManager:
             update_mode = self.PART_UPDATE if use_partial_update else self.FULL_UPDATE
             logging.info(f"Initializing display with mode: {update_mode} (partial={use_partial_update})")
             
-            # Initialize with partial update if requested
-            self.epd.init(update_mode)
+            # Check if init method accepts update_mode parameter
+            try:
+                # Try to initialize with update mode
+                self.epd.init(update_mode)
+            except TypeError:
+                # If error occurs, try calling init() without parameters
+                logging.info("EPD init() doesn't accept parameters, calling without arguments")
+                self.epd.init()
             
             # Use the same method as in the working example
             rotated_image = self.image.rotate(0)  # No rotation if needed

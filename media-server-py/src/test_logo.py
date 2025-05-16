@@ -34,13 +34,15 @@ def main():
         epd = epd2in13_V4.EPD()
         logging.info("Initializing display...")
         
-        # Define fallback values if needed
-        FULL_UPDATE = getattr(epd, 'FULL_UPDATE', 0)
-        PART_UPDATE = getattr(epd, 'PART_UPDATE', 1)
-        
-        logging.info(f"Using update modes - FULL: {FULL_UPDATE}, PART: {PART_UPDATE}")
-        
-        epd.init(FULL_UPDATE)
+        # Try initialization with different methods
+        try:
+            # Try to initialize with a parameter
+            epd.init(0)  # 0 for full update
+        except TypeError:
+            # If that fails, try without parameters
+            logging.info("EPD init() doesn't accept parameters, calling without arguments")
+            epd.init()
+            
         epd.Clear()
         
         # Display dimensions
