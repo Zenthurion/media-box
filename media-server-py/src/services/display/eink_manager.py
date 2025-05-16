@@ -117,6 +117,14 @@ class EinkDisplayManager:
         self.last_update = 0
         self.last_progress = 0
         
+        # Add tracking for full refresh cycles
+        self.last_full_refresh = time.time()
+        self.FULL_REFRESH_INTERVAL = 180  # seconds (3 minutes)
+        
+        # Create background refresh task
+        self.refresh_task = None
+        self.refresh_task_running = False
+        
         # Keep track of current display state
         self.current_title = ""
         self.current_progress = 0
@@ -126,17 +134,15 @@ class EinkDisplayManager:
         
         logging.info("Starting display initialization sequence...")
         
-        # First try to show the logo
-        logo_success = self.show_logo()
-        logging.info(f"Logo display {'successful' if logo_success else 'failed'}")
-        
-        if not logo_success:
-            # Only show standby if logo display failed
-            logging.info("Showing standby screen after logo display failed")
-            self.show_standby()
+        # Show standby screen (which will try to show the logo)
+        self.show_standby()
         
         # No test pattern at startup
         # self._draw_test_pattern()
+        
+        # Start the refresh task if we're not in simulation mode
+        if not self.simulation_mode:
+            self.start_refresh_task()
         
     def truncate_text(self, text, font, max_width):
         """Truncate text to fit within max_width pixels"""
@@ -193,6 +199,20 @@ class EinkDisplayManager:
             
     def show_standby(self):
         """Show standby screen"""
+        # Try to show the logo as standby screen
+        if not self.show_logo():
+            # Fall back to default standby screen if logo display fails
+            self._show_default_standby()
+        
+        # Clear stored track info
+        self.current_title = ""
+        self.current_progress = 0
+        self.current_time = "0:00"
+        self.total_time = "0:00"
+        self.is_playing = False
+
+    def _show_default_standby(self):
+        """Show default standby screen when logo is unavailable"""
         self.clear_display()
         
         # Draw a bold border to verify display is working
@@ -211,13 +231,6 @@ class EinkDisplayManager:
         
         # Use full update for standby screen
         self.update_display(use_partial_update=False)
-        
-        # Clear stored track info
-        self.current_title = ""
-        self.current_progress = 0
-        self.current_time = "0:00"
-        self.total_time = "0:00"
-        self.is_playing = False
         
     def show_loading(self, text="Loading..."):
         """Show loading screen"""
@@ -308,9 +321,11 @@ class EinkDisplayManager:
         
         # Only show total duration, not current time
         # This prevents constant updating of the time display
-        approx_min = int(float(progress) * float(self._parse_time_to_seconds(total_time)) / 60)
-        time_text = f"~{approx_min} min / {total_time}" 
-        self.draw.text((10, 70), time_text, font=self.normal_font, fill=0)
+        # Position text at right edge of progress bar, with small margin
+        time_text = total_time
+        text_width = self.draw.textlength(time_text, font=self.normal_font)
+        text_x = (bar_left + bar_width) - text_width
+        self.draw.text((text_x, 70), time_text, font=self.normal_font, fill=0)
     
     def _parse_time_to_seconds(self, time_str):
         """Convert a time string (MM:SS) to seconds"""
@@ -324,6 +339,12 @@ class EinkDisplayManager:
     
     async def update_progress_display(self, title, current_time, total_time, progress):
         """Update the display with current progress (with rate limiting)"""
+        # Check if periodic refresh is needed
+        refresh_performed = self._check_for_periodic_refresh()
+        if refresh_performed:
+            # If we just did a full refresh, update our tracking variables
+            self.current_title = ""  # Force a full redraw
+            
         # Store current values for future reference
         self.is_playing = True
         
@@ -350,16 +371,66 @@ class EinkDisplayManager:
             # Only progress changed - use partial refresh
             self._update_progress_section(current_time, total_time, progress)
 
+    async def _refresh_task(self):
+        """Background task to periodically refresh the display"""
+        self.refresh_task_running = True
+        try:
+            while self.refresh_task_running:
+                # Sleep first to avoid immediate refresh after initialization
+                await asyncio.sleep(60) # Check every 30 seconds
+                
+                if self.refresh_task_running:  # Check again after sleep
+                    self._check_for_periodic_refresh()
+        except Exception as e:
+            logging.error(f"Error in refresh task: {e}")
+        finally:
+            self.refresh_task_running = False
+            
+    def start_refresh_task(self):
+        """Start the background refresh task"""
+        if self.refresh_task is None or self.refresh_task.done():
+            self.refresh_task = asyncio.create_task(self._refresh_task())
+            logging.info("Started display refresh background task")
+            
+    def stop_refresh_task(self):
+        """Stop the background refresh task"""
+        if self.refresh_task and not self.refresh_task.done():
+            self.refresh_task_running = False
+            # Don't cancel the task directly, let it exit gracefully
+            logging.info("Stopping display refresh background task")
+            
     def cleanup(self):
         """Clean up the display when shutting down"""
+        # Stop the refresh task first
+        self.stop_refresh_task()
+        
         if not self.simulation_mode:
             try:
+                # Clear the display before sleeping for safer long-term storage
+                self.clear_display()
+                self.update_display(use_partial_update=False)
                 self.epd.sleep()
             except Exception as e:
-                logging.error(f"Error putting display to sleep: {e}") 
+                logging.error(f"Error putting display to sleep: {e}")
 
+    def _check_for_periodic_refresh(self):
+        """Check if we need to perform a periodic full refresh"""
+        current_time = time.time()
+        if current_time - self.last_full_refresh > self.FULL_REFRESH_INTERVAL:
+            logging.info(f"Performing scheduled full refresh (interval: {self.FULL_REFRESH_INTERVAL}s)")
+            self.periodic_refresh()
+            self.last_full_refresh = current_time
+            return True
+        return False
+        
     def update_display_with_audio_info(self, title, is_playing, current_time, total_time, progress):
         """Update display with current audio track information"""
+        # Check if periodic refresh is needed
+        refresh_performed = self._check_for_periodic_refresh()
+        if refresh_performed:
+            # If we just did a full refresh, update our tracking variables
+            self.current_title = ""  # Force a full redraw
+            
         logging.info(f"Updating display: {title} - Playing: {is_playing} - Progress: {progress:.1%}")
         
         if is_playing:
@@ -447,7 +518,7 @@ class EinkDisplayManager:
 
     def show_logo(self):
         """Show the logo image at startup"""
-        logging.info("Attempting to show logo at startup...")
+        logging.info("Attempting to show logo...")
         try:
             # Look for logo in the root directory and multiple possible locations
             project_root = Path(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))))
@@ -500,11 +571,6 @@ class EinkDisplayManager:
                     self.update_display(use_partial_update=False)
                     logging.info("Logo displayed successfully")
                     
-                    # Wait a moment to display the logo
-                    logging.info("Waiting 3 seconds to show logo...")
-                    time.sleep(3)
-                    logging.info("Logo display complete")
-                    
                     # Return True to indicate success
                     return True
                 except Exception as e:
@@ -549,3 +615,25 @@ class EinkDisplayManager:
         logging.info("Debug logo displayed")
         time.sleep(3)
         return True 
+
+    def periodic_refresh(self):
+        """Perform a full refresh to prevent image persistence if the same content
+        has been displayed for too long"""
+        logging.info("Performing periodic full refresh to prevent image persistence")
+        
+        # Store the current image
+        current_image = self.image.copy()
+        
+        # Clear to white
+        self.clear_display()
+        self.update_display(use_partial_update=False)
+        
+        # Optional: flash black
+        self.image = Image.new('1', (self.width, self.height), 0)  # All black
+        self.draw = ImageDraw.Draw(self.image)
+        self.update_display(use_partial_update=False)
+        
+        # Return to the previous image
+        self.image = current_image
+        self.draw = ImageDraw.Draw(self.image)
+        self.update_display(use_partial_update=False) 
