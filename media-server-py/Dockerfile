@@ -58,4 +58,7 @@ ENV WAVESHARE_HAT=1
 COPY logo.png /app/logo.png
 
 # Run the application
-CMD ["python", "-m", "src.main"]
+CMD ["python3", "-u", "/app/src/app.py"]
+
+# Or if you use an entrypoint script:
+ENTRYPOINT ["/app/entrypoint.sh"]
