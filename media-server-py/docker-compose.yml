@@ -40,7 +40,6 @@ services:
     logging:
       driver: "json-file"
       options:
-        timestamps: "true"
         max-size: "10m"
         max-file: "3"
 
