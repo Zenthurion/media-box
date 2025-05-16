@@ -44,6 +44,24 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
+# Create the entrypoint script directly in the container
+RUN echo '#!/bin/bash' > /app/entrypoint.sh && \
+    echo 'set -e' >> /app/entrypoint.sh && \
+    echo '' >> /app/entrypoint.sh && \
+    echo '# Forward all signals to the Python process' >> /app/entrypoint.sh && \
+    echo 'trap "kill -TERM \$PID" TERM INT' >> /app/entrypoint.sh && \
+    echo '' >> /app/entrypoint.sh && \
+    echo '# Start the Python application in the background' >> /app/entrypoint.sh && \
+    echo 'python3 -u /app/src/app.py &' >> /app/entrypoint.sh && \
+    echo 'PID=\$!' >> /app/entrypoint.sh && \
+    echo '' >> /app/entrypoint.sh && \
+    echo '# Wait for the Python process to exit' >> /app/entrypoint.sh && \
+    echo 'wait \$PID' >> /app/entrypoint.sh && \
+    echo '' >> /app/entrypoint.sh && \
+    echo '# Exit with the same code' >> /app/entrypoint.sh && \
+    echo 'exit \$?' >> /app/entrypoint.sh && \
+    chmod +x /app/entrypoint.sh
+
 # Copy the rest of the application
 COPY src/ ./src/
 
@@ -56,10 +74,6 @@ ENV WAVESHARE_HAT=1
 
 # Add this line to your Dockerfile to copy the logo file
 COPY logo.png /app/logo.png
-
-# Add these lines before CMD
-COPY entrypoint.sh /app/entrypoint.sh
-RUN chmod +x /app/entrypoint.sh
 
 # Change CMD to use the entrypoint script
 ENTRYPOINT ["/app/entrypoint.sh"]
