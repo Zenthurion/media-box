@@ -5,10 +5,10 @@ import logging
 import time
 
 # Standard pin definition for direct ribbon cable connection
-RST_PIN = 27   # Physical pin 13
-DC_PIN = 22    # Physical pin 15
+RST_PIN = 17   # Physical pin 11
+DC_PIN = 25    # Physical pin 22
 CS_PIN = 8     # Physical pin 24
-BUSY_PIN = 17  # Physical pin 11
+BUSY_PIN = 24  # Physical pin 18
 
 # Only use WAVESHARE_SIMULATOR env var to determine simulator mode
 SIMULATOR = os.environ.get('WAVESHARE_SIMULATOR', '0') == '1'
