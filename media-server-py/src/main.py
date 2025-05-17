@@ -3,6 +3,7 @@ import asyncio
 from services.mqtt_service import MQTTService
 from services.media_player import MediaPlayer
 from handlers.url_handler import identify_url
+from src.shutdown_handler import shutdown_manager
 
 # Configure logging
 logging.basicConfig(
@@ -50,6 +51,10 @@ class Server:
 
 async def main():
     logger.info("Running main.py")
+    
+    # Set up shutdown handler
+    shutdown_manager.setup()
+    
     server = Server()
     try:
         await server.start()

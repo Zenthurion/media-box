@@ -3,7 +3,10 @@ import asyncio
 import os
 import signal
 import time
-from shutdown_handler import shutdown_manager
+from src.shutdown_handler import shutdown_manager
+
+# Import the server components from main.py
+from src.main import Server
 
 # Configure logging with timestamps
 logging.basicConfig(
@@ -18,9 +21,25 @@ async def main():
     # Set up shutdown handler
     shutdown_manager.setup()
     
-    # Keep the application running
-    while True:
-        await asyncio.sleep(1)
+    logging.info("Initializing server...")
+    server = Server()
+    
+    try:
+        # Start the server
+        await server.start()
+        
+        # Keep the application running
+        while True:
+            await asyncio.sleep(1)
+    except Exception as e:
+        logging.error(f"Error in server: {e}")
+        raise
+    finally:
+        if server:
+            try:
+                await server.stop()
+            except Exception as e:
+                logging.error(f"Error stopping server: {e}")
 
 def test_shutdown():
     """Test the shutdown process"""

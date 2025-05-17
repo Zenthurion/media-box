@@ -8,11 +8,14 @@ import signal
 import logging
 import os
 
+# Add the src directory to the Python path
+sys.path.append('/app')
+sys.path.append('/app/src')
 
 async def run_app():
     """Import and run the main application"""
     # Import here after event loop is established
-    from src.app import main
+    from src.main import main
     
     # Run the main application
     await main()
@@ -37,10 +40,14 @@ if __name__ == "__main__":
     
     # Run the app with proper asyncio support
     try:
+        logging.info("Starting application via entrypoint...")
         asyncio.run(run_app())
+        logging.info("Application main loop exited normally")
     except KeyboardInterrupt:
         print('Keyboard interrupt received, shutting down...')
     except Exception as e:
         print(f'Error running app: {e}')
         import traceback
-        traceback.print_exc() 
+        traceback.print_exc()
+    finally:
+        print("Application terminated") 

@@ -33,6 +33,7 @@ class ShutdownManager:
         signal.signal(signal.SIGINT, self.handle_shutdown)
         
         logging.info("Shutdown handler configured")
+        logging.info("==== SHUTDOWN HANDLER SETUP COMPLETE ====")
         
     def handle_shutdown(self, signum, frame):
         """Handle shutdown signal by displaying logo and then exiting"""

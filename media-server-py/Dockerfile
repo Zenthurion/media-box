@@ -46,10 +46,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy the rest of the application
 COPY src/ ./src/
-COPY docker-entrypoint.py /app/docker-entrypoint.py
-
-# Make the entrypoint script executable
-RUN chmod +x /app/docker-entrypoint.py
+COPY docker-entrypoint.py /app/
 
 # Install Python dependencies (moved from apt-get)
 RUN pip3 install spidev RPi.GPIO
@@ -57,9 +54,14 @@ RUN pip3 install spidev RPi.GPIO
 # Set environment variables
 ENV PYTHONUNBUFFERED=1
 ENV WAVESHARE_HAT=1
+ENV PYTHONPATH="/app:/app/src:${PYTHONPATH}"
 
 # Add this line to your Dockerfile to copy the logo file
 COPY logo.png /app/logo.png
 
-# Use the Python script directly as entrypoint
-ENTRYPOINT ["/app/docker-entrypoint.py"]
+# Explicitly set permissions on the entrypoint script
+RUN chmod +x /app/docker-entrypoint.py && \
+    ls -la /app/docker-entrypoint.py
+
+# Use the bash shell to invoke the Python script
+ENTRYPOINT ["python3", "/app/docker-entrypoint.py"]
