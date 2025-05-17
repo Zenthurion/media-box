@@ -44,26 +44,12 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Create the entrypoint script directly in the container
-RUN echo '#!/bin/bash' > /app/entrypoint.sh && \
-    echo 'set -e' >> /app/entrypoint.sh && \
-    echo '' >> /app/entrypoint.sh && \
-    echo '# Forward all signals to the Python process' >> /app/entrypoint.sh && \
-    echo 'trap "kill -TERM \$PID" TERM INT' >> /app/entrypoint.sh && \
-    echo '' >> /app/entrypoint.sh && \
-    echo '# Start the Python application in the background' >> /app/entrypoint.sh && \
-    echo 'python3 -u /app/src/app.py &' >> /app/entrypoint.sh && \
-    echo 'PID=\$!' >> /app/entrypoint.sh && \
-    echo '' >> /app/entrypoint.sh && \
-    echo '# Wait for the Python process to exit' >> /app/entrypoint.sh && \
-    echo 'wait \$PID' >> /app/entrypoint.sh && \
-    echo '' >> /app/entrypoint.sh && \
-    echo '# Exit with the same code' >> /app/entrypoint.sh && \
-    echo 'exit \$?' >> /app/entrypoint.sh && \
-    chmod +x /app/entrypoint.sh
-
 # Copy the rest of the application
 COPY src/ ./src/
+COPY docker-entrypoint.py /app/docker-entrypoint.py
+
+# Make the entrypoint script executable
+RUN chmod +x /app/docker-entrypoint.py
 
 # Install Python dependencies (moved from apt-get)
 RUN pip3 install spidev RPi.GPIO
@@ -75,6 +61,5 @@ ENV WAVESHARE_HAT=1
 # Add this line to your Dockerfile to copy the logo file
 COPY logo.png /app/logo.png
 
-# Change CMD to use the entrypoint script
-ENTRYPOINT ["/app/entrypoint.sh"]
-CMD []
+# Use the Python script directly as entrypoint
+ENTRYPOINT ["/app/docker-entrypoint.py"]

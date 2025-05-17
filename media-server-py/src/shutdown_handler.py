@@ -7,6 +7,7 @@ import sys
 import signal
 import logging
 import time
+import asyncio
 from pathlib import Path
 
 # Add the src directory to path so we can import from our modules
@@ -24,8 +25,8 @@ class ShutdownManager:
         """Set up the shutdown handler"""
         logging.info("Setting up shutdown handler")
         
-        # Initialize display manager
-        self.display_manager = EinkDisplayManager()
+        # Initialize display manager with refresh_task=False to avoid asyncio error
+        self.display_manager = EinkDisplayManager(start_refresh_task=False)
         
         # Register signal handlers
         signal.signal(signal.SIGTERM, self.handle_shutdown)

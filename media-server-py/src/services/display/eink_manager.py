@@ -69,7 +69,7 @@ except ImportError as e:
 class EinkDisplayManager:
     """Manages display of audio information on Waveshare 2.13" e-ink display"""
     
-    def __init__(self, simulation_mode=False):
+    def __init__(self, simulation_mode=False, start_refresh_task=True):
         """Initialize the display"""
         self.simulation_mode = simulation_mode or SIMULATOR_MODE
         
@@ -140,8 +140,8 @@ class EinkDisplayManager:
         # No test pattern at startup
         # self._draw_test_pattern()
         
-        # Start the refresh task if we're not in simulation mode
-        if not self.simulation_mode:
+        # Start the refresh task if we're not in simulation mode and start_refresh_task is True
+        if not self.simulation_mode and start_refresh_task:
             self.start_refresh_task()
         
     def truncate_text(self, text, font, max_width):
@@ -389,8 +389,14 @@ class EinkDisplayManager:
     def start_refresh_task(self):
         """Start the background refresh task"""
         if self.refresh_task is None or self.refresh_task.done():
-            self.refresh_task = asyncio.create_task(self._refresh_task())
-            logging.info("Started display refresh background task")
+            try:
+                # Try to get the current event loop
+                loop = asyncio.get_event_loop()
+                self.refresh_task = loop.create_task(self._refresh_task())
+                logging.info("Started display refresh background task")
+            except RuntimeError:
+                # No event loop available - log but don't fail
+                logging.warning("Could not start refresh task - no running event loop")
             
     def stop_refresh_task(self):
         """Stop the background refresh task"""
