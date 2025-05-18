@@ -3,15 +3,15 @@
 #include "secrets.h"
 
 // Pin definitions
-#define SS_PIN 5
-#define RST_PIN 4
+#define SS_PIN 5   // SPI Slave Select pin
+#define RST_PIN 4  // Reset pin for PN532
 #define RED_PIN 22   // RGB LED pins - adjust these
 #define GREEN_PIN 15 // according to your wiring
 #define BLUE_PIN 21
 #define BUTTON_PIN 13 // Add button pin - adjust as needed
 
 // Create objects
-NFCReader nfcReader(SS_PIN, RST_PIN);
+NFCReader nfcReader(SS_PIN);
 WiFiManager wifiManager(WIFI_SSID, WIFI_PASSWORD, MQTT_SERVER, MQTT_PORT);
 
 const char *mqtt_topic = "nfc/url";

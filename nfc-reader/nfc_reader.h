@@ -1,22 +1,26 @@
-#ifndef NFC_READER_H
-#define NFC_READER_H
+#pragma once
+#include <Arduino.h>
+#include <Adafruit_PN532.h>
 
-#include <MFRC522.h>
-
-class NFCReader {
-private:
-    MFRC522 mfrc522;
-    MFRC522::MIFARE_Key key;
-    
-    byte buffer[18];
-
-public:
-    NFCReader(uint8_t ss_pin, uint8_t rst_pin);
-    void begin();
-    String readNDEFMessage();
-    
-private:
-    String processNDEFData(byte* allData, int dataIndex);
+enum TagType {
+  TAG_UNKNOWN,
+  TAG_MIFARE_CLASSIC,
+  TAG_ULTRALIGHT,
+  TAG_ISO_DEP
 };
 
-#endif 
+class NFCReader {
+public:
+  NFCReader(uint8_t cs_pin);
+  void begin();
+  String readNDEFMessage();
+  void debugDump(uint8_t* data, uint32_t length);
+
+private:
+  Adafruit_PN532 pn532;
+  String processNDEFData(uint8_t* data, uint32_t length);
+  String getUriPrefix(uint8_t code);
+  bool readMifareClassicNDEF(String& result, uint8_t* uid, uint8_t uidLength);
+  bool readUltralightNDEF(String& result, uint8_t* uid, uint8_t uidLength);
+  TagType identifyTagType(uint8_t* uid, uint8_t uidLength);
+};
