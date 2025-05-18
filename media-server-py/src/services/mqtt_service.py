@@ -8,7 +8,8 @@ class MQTTService:
     def __init__(self):
         self._client: Optional[Client] = None
         self._event_handlers: Dict[str, List[Callable]] = {
-            'url': []
+            'url': [],
+            'playback': []  # Add playback event handler list
         }
         self._running = False
         self._topic_handlers = {}
@@ -75,6 +76,9 @@ class MQTTService:
                     
                     # Add audio state topic handler
                     self._topic_handlers[config.mqtt.audio_state_topic] = self.on_audio_state_message
+                    
+                    # Add playback command topic handler
+                    self._topic_handlers[config.mqtt.playback_topic] = self._handle_playback_command
                     
                     # Subscribe to topics
                     for topic in self._topic_handlers.keys():
@@ -147,6 +151,17 @@ class MQTTService:
                 )
         except Exception as e:
             print(f"Error handling audio state message: {e}")
+
+    async def _handle_playback_command(self, payload: str) -> None:
+        """Handle playback command messages"""
+        print(f"Processing playback command: {payload}")
+        valid_commands = ["Resume", "Pause", "Stop", "Next", "Previous",  "Shutdown"]
+        
+        # Validate the command
+        if payload in valid_commands:
+            await self._emit('playback', payload)
+        else:
+            print(f"Invalid playback command received: {payload}")
 
     async def stop(self) -> None:
         """Stop the MQTT service"""

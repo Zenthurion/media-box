@@ -20,6 +20,7 @@ class Server:
     async def start(self):
         await self.mqtt_service.start()
         self.mqtt_service.on('url', self.process_url)
+        self.mqtt_service.on('playback', self.process_playback_command)
         
         # TODO: Add handling for stop and restart buttons
         logger.info("Server started")
@@ -48,6 +49,13 @@ class Server:
                 
         except Exception as error:
             logger.error(f"Error processing URL: {error}", exc_info=True)
+    
+    async def process_playback_command(self, command: str) -> None:
+        logger.info(f"Processing playback command: {command}")
+        if command == 'Shutdown':
+            shutdown_manager.shutdown()
+        else:
+            await self.media_player.process_command(command)
 
 async def main():
     logger.info("Running main.py")

@@ -354,3 +354,25 @@ class YtDlpAudioPlayer:
                 print(f"Published status to {config.mqtt.audio_state_topic}")
         except Exception as e:
             print(f"Error publishing status: {e}") 
+
+    async def resume(self) -> None:
+        """Resume playback"""
+        if self._player:
+            self._player.play()
+            self._status["is_playing"] = True
+            self._emit('resumed')
+
+    async def pause(self) -> None:
+        """Pause playback"""
+        if self._player:
+            self._player.pause()
+            self._status["is_playing"] = False
+            self._emit('paused')
+    
+    async def play_next(self) -> None:
+        """Play next audio"""
+        pass
+
+    async def play_previous(self) -> None:
+        """Play previous audio"""
+        pass

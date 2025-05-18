@@ -60,3 +60,33 @@ class MediaPlayer:
     def get_playback_status(self) -> dict:
         """Get current playback status"""
         return self.audio_player.get_status() 
+    
+    async def process_command(self, command: str) -> None:
+        """Process a playback command"""
+        if command == 'Resume':
+            await self.resume_audio()
+        elif command == 'Pause':
+            await self.pause_audio()
+        elif command == 'Stop':
+            await self.stop_audio()
+        elif command == 'Next':
+            await self.play_next_audio()
+        elif command == 'Previous':
+            await self.play_previous_audio()
+
+    async def resume_audio(self) -> None:
+        """Resume audio playback"""
+        await self.audio_player.resume()
+
+    async def pause_audio(self) -> None:
+        """Pause audio playback"""
+        await self.audio_player.pause()
+
+    async def play_next_audio(self) -> None:
+        """Play next audio"""
+        await self.audio_player.play_next()
+
+    async def play_previous_audio(self) -> None:
+        """Play previous audio"""
+        await self.audio_player.play_previous()
+
