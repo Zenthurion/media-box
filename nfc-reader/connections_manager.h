@@ -1,10 +1,10 @@
-#ifndef WIFI_MANAGER_H
-#define WIFI_MANAGER_H
+#ifndef CONNECTIONS_MANAGER_H
+#define CONNECTIONS_MANAGER_H
 
 #include <WiFi.h>
 #include <PubSubClient.h>
 
-class WiFiManager {
+class ConnectionsManager {
 private:
     const char* ssid;
     const char* password;
@@ -15,7 +15,7 @@ private:
     PubSubClient mqttClient;
 
 public:
-    WiFiManager(const char* ssid, const char* password, 
+    ConnectionsManager(const char* ssid, const char* password, 
                 const char* mqtt_server, const int mqtt_port);
     void begin();
     bool loop();
@@ -23,7 +23,7 @@ public:
     
 private:
     void connectWiFi();
-    bool reconnectMQTT();
+    bool connectMQTT();
 };
 
 #endif 

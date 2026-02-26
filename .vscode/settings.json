@@ -1,0 +1,8 @@
+{
+    "idf.espIdfPathWin": "C:\\Users\\marku\\esp\\v5.4.1\\esp-idf",
+    "idf.toolsPathWin": "C:\\Users\\marku\\.espressif",
+    "idf.pythonInstallPath": "C:\\Users\\marku\\.espressif\\tools\\idf-python\\3.11.2\\python.exe",
+    "idf.flashType": "JTAG",
+    "idf.portWin": "COM4",
+    "idf.monitorPort": "COM4"
+}

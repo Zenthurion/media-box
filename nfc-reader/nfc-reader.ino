@@ -1,18 +1,17 @@
 #include "nfc_reader.h"
-#include "wifi_manager.h"
+#include "connections_manager.h"
 #include "secrets.h"
 
 // Pin definitions
-#define SS_PIN 5   // SPI Slave Select pin
-#define RST_PIN 4  // Reset pin for PN532
-#define RED_PIN 22   // RGB LED pins - adjust these
-#define GREEN_PIN 15 // according to your wiring
-#define BLUE_PIN 21
-#define BUTTON_PIN 13 // Add button pin - adjust as needed
+#define SS_PIN 27 // SPI Slave Select pin (output-capable)
+#define RED_PIN 4
+#define GREEN_PIN 5
+#define BLUE_PIN 22
+#define BUTTON_PIN 13 // Manual button test message trigger
 
 // Create objects
 NFCReader nfcReader(SS_PIN);
-WiFiManager wifiManager(WIFI_SSID, WIFI_PASSWORD, MQTT_SERVER, MQTT_PORT);
+ConnectionsManager connectionsManager(WIFI_SSID, WIFI_PASSWORD, MQTT_SERVER, MQTT_PORT);
 
 const char *mqtt_topic = "nfc/url";
 
@@ -23,7 +22,7 @@ void setup()
     pinMode(RED_PIN, OUTPUT);
     pinMode(GREEN_PIN, OUTPUT);
     pinMode(BLUE_PIN, OUTPUT);
-    pinMode(BUTTON_PIN, INPUT_PULLUP); // Add button pin mode
+    pinMode(BUTTON_PIN, INPUT_PULLUP);
 
     // Turn off all LED colors initially
     digitalWrite(RED_PIN, LOW);
@@ -33,7 +32,7 @@ void setup()
     nfcReader.begin();
     Serial.println("NFC Reader Ready!");
 
-    wifiManager.begin();
+    connectionsManager.begin();
     // Serial.println("Button test started");
 }
 
@@ -87,7 +86,7 @@ bool isButtonPressed()
 void loop()
 {
     // Check WiFi status
-    if (!wifiManager.loop())
+    if (!connectionsManager.loop())
     {
         Serial.println("WiFi or MQTT connection lost!");
         indicateError(200); // Short red flash to show connection issues
@@ -100,7 +99,7 @@ void loop()
     {
         const char *predefinedMessage = "https://music.youtube.com/watch?v=CTvjhbfrgEY";
 
-        bool publishResult = wifiManager.publish(mqtt_topic, predefinedMessage);
+        bool publishResult = connectionsManager.publish(mqtt_topic, predefinedMessage);
 
         if (publishResult)
         {
@@ -125,7 +124,7 @@ void loop()
         Serial.print("NDEF Data: ");
         Serial.println(ndefData);
 
-        if (wifiManager.publish(mqtt_topic, ndefData.c_str()))
+        if (connectionsManager.publish(mqtt_topic, ndefData.c_str()))
         {
             Serial.println("Sent to MQTT: " + ndefData);
             indicateSuccess(); // Green light for successful send

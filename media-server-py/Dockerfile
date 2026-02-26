@@ -1,5 +1,5 @@
 # Use ARM-compatible Python image
-FROM --platform=linux/arm/v7 python:3.11-slim-bullseye
+FROM python:3.11-slim-bullseye
 
 # Install system dependencies including build tools and development packages
 RUN apt-get update && apt-get install -y \
@@ -54,7 +54,7 @@ RUN pip3 install spidev RPi.GPIO
 # Set environment variables
 ENV PYTHONUNBUFFERED=1
 ENV WAVESHARE_HAT=1
-ENV PYTHONPATH="/app:/app/src:${PYTHONPATH}"
+ENV PYTHONPATH="/app:/app/src"
 
 # Add this line to your Dockerfile to copy the logo file
 COPY logo.png /app/logo.png

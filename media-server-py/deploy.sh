@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Configuration
-PI_HOST="pi@192.168.50.88"
+PI_HOST="markus@192.168.50.195"
 PROJECT_NAME="media-box"
 SERVICE_NAME="media-box.service"
 

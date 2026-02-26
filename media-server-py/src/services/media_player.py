@@ -63,16 +63,20 @@ class MediaPlayer:
     
     async def process_command(self, command: str) -> None:
         """Process a playback command"""
-        if command == 'Resume':
+        normalized = command.strip().lower()
+
+        if normalized in ('play', 'resume'):
             await self.resume_audio()
-        elif command == 'Pause':
+        elif normalized == 'pause':
             await self.pause_audio()
-        elif command == 'Stop':
+        elif normalized == 'stop':
             await self.stop_audio()
-        elif command == 'Next':
+        elif normalized == 'next':
             await self.play_next_audio()
-        elif command == 'Previous':
+        elif normalized == 'previous':
             await self.play_previous_audio()
+        else:
+            print(f"Unknown media command: {command}")
 
     async def resume_audio(self) -> None:
         """Resume audio playback"""

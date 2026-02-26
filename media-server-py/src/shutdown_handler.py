@@ -7,8 +7,9 @@ import sys
 import signal
 import logging
 import time
-import asyncio
 from pathlib import Path
+import asyncio
+import subprocess
 
 # Add the src directory to path so we can import from our modules
 src_dir = os.path.dirname(os.path.abspath(__file__))
@@ -20,6 +21,26 @@ from services.display.eink_manager import EinkDisplayManager
 class ShutdownManager:
     def __init__(self):
         self.display_manager = None
+
+    def _display_shutdown_screen(self):
+        """Show shutdown logo and cleanup display hardware."""
+        if not self.display_manager:
+            return
+        try:
+            logging.info("Displaying logo before shutdown")
+            self.display_manager.show_logo()
+
+            # Allow the display time to refresh
+            logging.info("Waiting for display to update...")
+            time.sleep(3)
+
+            logging.info("Cleaning up display")
+            self.display_manager.cleanup()
+            logging.info("Display cleanup complete")
+        except Exception as e:
+            logging.error(f"Error during shutdown display: {e}")
+            import traceback
+            logging.error(traceback.format_exc())
         
     def setup(self):
         """Set up the shutdown handler"""
@@ -40,26 +61,29 @@ class ShutdownManager:
         logging.info(f"Received signal {signum}, preparing for shutdown")
         
         # Show logo before shutdown
-        if self.display_manager:
-            try:
-                logging.info("Displaying logo before shutdown")
-                self.display_manager.show_logo()
-                
-                # Increase time for display to update - Docker gives 10 seconds by default
-                logging.info("Waiting for display to update...")
-                time.sleep(3)
-                
-                # Cleanup display
-                logging.info("Cleaning up display")
-                self.display_manager.cleanup()
-                logging.info("Display cleanup complete")
-            except Exception as e:
-                logging.error(f"Error during shutdown display: {e}")
-                import traceback
-                logging.error(traceback.format_exc())
-        
+        self._display_shutdown_screen()
+
         logging.info("Exiting application")
         sys.exit(0)
+
+    def _run_shutdown_sequence(self):
+        """Perform shutdown display then request system halt."""
+        self._display_shutdown_screen()
+
+        try:
+            subprocess.run(["sudo", "shutdown", "-h", "now"], check=True)
+        except FileNotFoundError:
+            logging.error("Could not find shutdown command; exiting process instead")
+        except subprocess.CalledProcessError as e:
+            logging.error(f"Failed to initiate system shutdown: {e}")
+
+        # Ensure the process exits even if shutdown command fails
+        sys.exit(0)
+
+    async def shutdown(self):
+        """Initiate shutdown from async context (e.g., MQTT command)."""
+        logging.info("Shutdown command received; initiating system shutdown")
+        await asyncio.to_thread(self._run_shutdown_sequence)
 
 # Instantiate for import in other modules
 shutdown_manager = ShutdownManager()

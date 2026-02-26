@@ -1,6 +1,6 @@
-#include "wifi_manager.h"
+#include "connections_manager.h"
 
-WiFiManager::WiFiManager(const char* ssid, const char* password, 
+ConnectionsManager::ConnectionsManager(const char* ssid, const char* password, 
                         const char* mqtt_server, const int mqtt_port) 
     : ssid(ssid)
     , password(password)
@@ -9,12 +9,12 @@ WiFiManager::WiFiManager(const char* ssid, const char* password,
     , mqttClient(espClient) {
 }
 
-void WiFiManager::begin() {
+void ConnectionsManager::begin() {
     connectWiFi();
     mqttClient.setServer(mqtt_server, mqtt_port);
 }
 
-bool WiFiManager::loop() {
+bool ConnectionsManager::loop() {
     if (WiFi.status() != WL_CONNECTED) {
         Serial.println("WiFi disconnected, attempting to reconnect...");
         connectWiFi();
@@ -23,7 +23,7 @@ bool WiFiManager::loop() {
     
     if (!mqttClient.connected()) {
         Serial.println("MQTT disconnected, attempting to reconnect...");
-        reconnectMQTT();
+        connectMQTT();
         return false;
     }
     
@@ -31,7 +31,7 @@ bool WiFiManager::loop() {
     return true;
 }
 
-bool WiFiManager::publish(const char* topic, const char* message) {
+bool ConnectionsManager::publish(const char* topic, const char* message) {
     if (WiFi.status() != WL_CONNECTED) {
         Serial.println("WiFi disconnected, cannot publish");
         return false;
@@ -39,15 +39,18 @@ bool WiFiManager::publish(const char* topic, const char* message) {
     
     if (!mqttClient.connected()) {
         Serial.println("MQTT disconnected, attempting to reconnect...");
-        if (!reconnectMQTT()) {
+        if (!connectMQTT()) {
             return false;
         }
     }
     return mqttClient.publish(topic, message);
 }
 
-void WiFiManager::connectWiFi() {
+void ConnectionsManager::connectWiFi() {
     Serial.print("Connecting to WiFi");
+    WiFi.disconnect(true);
+    WiFi.setHostname("button-controller");
+    WiFi.mode(WIFI_STA);
     WiFi.begin(ssid, password);
     
     while (WiFi.status() != WL_CONNECTED) {
@@ -60,15 +63,18 @@ void WiFiManager::connectWiFi() {
     Serial.println(WiFi.localIP());
 }
 
-bool WiFiManager::reconnectMQTT() {
+bool ConnectionsManager::connectMQTT() {
     int attempts = 0;
     const int maxAttempts = 3;  // Limit reconnection attempts
     
     while (!mqttClient.connected() && attempts < maxAttempts) {
-        Serial.print("Attempting MQTT connection...");
-        
         String clientId = "NFCReader-";
         clientId += String(random(0xffff), HEX);
+
+        Serial.print("Attempting MQTT connection for client ");
+        Serial.print(clientId);
+        Serial.print("... ");
+        
         
         if (mqttClient.connect(clientId.c_str())) {
             Serial.println("connected");

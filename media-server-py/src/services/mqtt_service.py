@@ -9,7 +9,8 @@ class MQTTService:
         self._client: Optional[Client] = None
         self._event_handlers: Dict[str, List[Callable]] = {
             'url': [],
-            'playback': []  # Add playback event handler list
+            'playback': [],  # media command handler list
+            'system': []     # system command handler list
         }
         self._running = False
         self._topic_handlers = {}
@@ -79,6 +80,9 @@ class MQTTService:
                     
                     # Add playback command topic handler
                     self._topic_handlers[config.mqtt.playback_topic] = self._handle_playback_command
+
+                    # Add system command topic handler (single topic with payload Start/Shutdown)
+                    self._topic_handlers[config.mqtt.system_command] = self._handle_system_command
                     
                     # Subscribe to topics
                     for topic in self._topic_handlers.keys():
@@ -155,13 +159,18 @@ class MQTTService:
     async def _handle_playback_command(self, payload: str) -> None:
         """Handle playback command messages"""
         print(f"Processing playback command: {payload}")
-        valid_commands = ["Resume", "Pause", "Stop", "Next", "Previous",  "Shutdown"]
+        valid_commands = ["Play", "Resume", "Pause", "Stop", "Next", "Previous", "Shutdown"]
         
         # Validate the command
         if payload in valid_commands:
             await self._emit('playback', payload)
         else:
             print(f"Invalid playback command received: {payload}")
+
+    async def _handle_system_command(self, payload: str) -> None:
+        """Handle system command messages (Start/Shutdown)"""
+        print(f"Processing system command: {payload}")
+        await self._emit('system', payload)
 
     async def stop(self) -> None:
         """Stop the MQTT service"""
