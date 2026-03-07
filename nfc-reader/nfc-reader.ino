@@ -13,7 +13,7 @@
 NFCReader nfcReader(SS_PIN);
 ConnectionsManager connectionsManager(WIFI_SSID, WIFI_PASSWORD, MQTT_SERVER, MQTT_PORT);
 
-const char *mqtt_topic = "nfc/url";
+const char *mqtt_topic = "media/url";
 
 void setup()
 {
@@ -33,6 +33,8 @@ void setup()
     Serial.println("NFC Reader Ready!");
 
     connectionsManager.begin();
+    Serial.printf("MQTT target: %s:%d\n", MQTT_SERVER, MQTT_PORT);
+    Serial.printf("Publishing NFC URLs to topic: %s\n", mqtt_topic);
     // Serial.println("Button test started");
 }
 
@@ -88,7 +90,13 @@ void loop()
     // Check WiFi status
     if (!connectionsManager.loop())
     {
-        Serial.println("WiFi or MQTT connection lost!");
+        static unsigned long lastConnectionLog = 0;
+        unsigned long now = millis();
+        if (now - lastConnectionLog > 5000)
+        {
+            Serial.println("Waiting for WiFi/MQTT connection...");
+            lastConnectionLog = now;
+        }
         indicateError(200); // Short red flash to show connection issues
         delay(1000);
         return;
@@ -98,17 +106,18 @@ void loop()
     if (isButtonPressed())
     {
         const char *predefinedMessage = "https://music.youtube.com/watch?v=CTvjhbfrgEY";
+        Serial.printf("Publishing test URL to %s: %s\n", mqtt_topic, predefinedMessage);
 
         bool publishResult = connectionsManager.publish(mqtt_topic, predefinedMessage);
 
         if (publishResult)
         {
-            Serial.println("Successfully sent button press to MQTT");
+            Serial.printf("Publish OK to %s\n", mqtt_topic);
             indicateSuccess();
         }
         else
         {
-            Serial.println("Failed to send button press to MQTT");
+            Serial.printf("Publish FAILED to %s\n", mqtt_topic);
             indicateError();
         }
         Serial.println("------------------");
@@ -123,14 +132,16 @@ void loop()
 
         Serial.print("NDEF Data: ");
         Serial.println(ndefData);
+        Serial.printf("Publishing NFC URL to %s (len=%d)\n", mqtt_topic, ndefData.length());
 
         if (connectionsManager.publish(mqtt_topic, ndefData.c_str()))
         {
-            Serial.println("Sent to MQTT: " + ndefData);
+            Serial.printf("Publish OK to %s\n", mqtt_topic);
             indicateSuccess(); // Green light for successful send
         }
         else
         {
+            Serial.printf("Publish FAILED to %s\n", mqtt_topic);
             indicateError(); // Red light for error
         }
     }

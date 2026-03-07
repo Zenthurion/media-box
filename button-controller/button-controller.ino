@@ -3,57 +3,37 @@
 
 #define BUTTON_PLAY 33
 #define BUTTON_STOP 22
-#define BUTTON_SHUTDOWN 19
-#define BUTTON_START 21
 
 #define RED_PIN 25
 #define GREEN_PIN 26
 #define BLUE_PIN 27
 
-#define MOSFET_GATE_PIN 5 // P-FET gate: LOW = ON (pulls low to power Pi)
-#define PI_ALIVE_PIN 18   // From Pi GPIO7
-
 const char *mqttTopics[] = {
     "media/command",   // media play/pause/stop/etc.
-    "media/command",
-    "system/command",  // system controls (Start/Shutdown)
-    "system/command"};
+    "media/command"};
 
 const char *mqttPayloads[] = {
     "Play",
-    "Stop",
-    "Shutdown",
-    "Start"};
+    "Stop"};
 
 const uint8_t buttonPins[] = {
     BUTTON_PLAY,
-    BUTTON_STOP,
-    BUTTON_SHUTDOWN,
-    BUTTON_START};
+    BUTTON_STOP};
 
-#define NUM_BUTTONS 4
+#define NUM_BUTTONS 2
 
 ConnectionsManager connectionsManager(WIFI_SSID, WIFI_PASSWORD, MQTT_SERVER, MQTT_PORT);
 
 // Better debounce tracking
-bool lastButtonStates[NUM_BUTTONS] = {HIGH, HIGH, HIGH, HIGH};
-bool buttonPressed[NUM_BUTTONS] = {false, false, false, false};
-unsigned long lastDebounceTimes[NUM_BUTTONS] = {0, 0, 0, 0};
-bool stableStates[NUM_BUTTONS] = {HIGH, HIGH, HIGH, HIGH};
+bool lastButtonStates[NUM_BUTTONS] = {HIGH, HIGH};
+bool buttonPressed[NUM_BUTTONS] = {false, false};
+unsigned long lastDebounceTimes[NUM_BUTTONS] = {0, 0};
+bool stableStates[NUM_BUTTONS] = {HIGH, HIGH};
 const unsigned long debounceDelay = 50;
 
 const char *buttonNames[] = {
     "PLAY",
-    "STOP",
-    "SHUTDOWN",
-    "START"};
-
-// Shutdown monitoring
-bool shutdownRequested = false;
-unsigned long shutdownRequestTime = 0;
-unsigned long aliveLowSince = 0;
-const unsigned long shutdownTimeoutMs = 60000; // how long to wait before giving up
-const unsigned long aliveLowStableMs = 2000;   // require low for this long before power cut
+    "STOP"};
 
 void setup()
 {
@@ -63,11 +43,6 @@ void setup()
   pinMode(RED_PIN, OUTPUT);
   pinMode(GREEN_PIN, OUTPUT);
   pinMode(BLUE_PIN, OUTPUT);
-
-  // Power control: default OFF (gate pulled high), watch Pi alive signal
-  pinMode(MOSFET_GATE_PIN, OUTPUT);
-  digitalWrite(MOSFET_GATE_PIN, HIGH); // off until Start button
-  pinMode(PI_ALIVE_PIN, INPUT_PULLDOWN);
 
   for (int i = 0; i < NUM_BUTTONS; i++)
   {
@@ -137,22 +112,6 @@ void checkButtons()
 
           bool publishOk = connectionsManager.publish(mqttTopics[i], mqttPayloads[i]);
 
-          // Handle start/shutdown locally
-          if (i == 3) // START
-          {
-            Serial.println("Start button: enabling Pi power.");
-            digitalWrite(MOSFET_GATE_PIN, LOW); // turn power on
-            shutdownRequested = false;
-            aliveLowSince = 0;
-          }
-          else if (i == 2) // SHUTDOWN
-          {
-            Serial.println("Shutdown button: requesting Pi shutdown and waiting to cut power.");
-            shutdownRequested = true;
-            shutdownRequestTime = millis();
-            aliveLowSince = 0;
-          }
-
           if (publishOk)
           {
             indicateSuccess(200);
@@ -171,45 +130,6 @@ void checkButtons()
     }
 
     lastButtonStates[i] = currentState;
-  }
-}
-
-void handleShutdownMonitor()
-{
-  if (!shutdownRequested)
-  {
-    return;
-  }
-
-  unsigned long now = millis();
-  int alive = digitalRead(PI_ALIVE_PIN);
-
-  if (alive == LOW)
-  {
-    if (aliveLowSince == 0)
-    {
-      aliveLowSince = now;
-    }
-    else if ((now - aliveLowSince) >= aliveLowStableMs)
-    {
-      Serial.println("Pi reported down; cutting power.");
-      digitalWrite(MOSFET_GATE_PIN, HIGH); // turn Pi power off
-      shutdownRequested = false;
-      aliveLowSince = 0;
-      indicateSuccess(300);
-    }
-  }
-  else
-  {
-    aliveLowSince = 0; // still alive, reset low timer
-  }
-
-  if (now - shutdownRequestTime > shutdownTimeoutMs)
-  {
-    Serial.println("Shutdown timeout: Pi still alive. Leaving power ON.");
-    shutdownRequested = false; // stop waiting; do not cut power
-    aliveLowSince = 0;
-    indicateError(300);
   }
 }
 
@@ -254,6 +174,5 @@ void loop()
   }
 
   checkButtons();
-  handleShutdownMonitor();
   delay(50);
 }

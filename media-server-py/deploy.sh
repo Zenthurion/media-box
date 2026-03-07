@@ -1,5 +1,7 @@
 #!/bin/bash
 
+# DEPRECATED
+
 # Configuration
 PI_HOST="markus@192.168.50.195"
 PROJECT_NAME="media-box"

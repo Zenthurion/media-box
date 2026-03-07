@@ -9,15 +9,14 @@ class MQTTService:
         self._client: Optional[Client] = None
         self._event_handlers: Dict[str, List[Callable]] = {
             'url': [],
-            'playback': [],  # media command handler list
-            'system': []     # system command handler list
+            'playback': []  # media command handler list
         }
         self._running = False
         self._topic_handlers = {}
         
         # Add display manager
         try:
-            from ..display.eink_manager import EinkDisplayManager
+            from .display.eink_manager import EinkDisplayManager
             self.display_manager = EinkDisplayManager()
         except Exception as e:
             print(f"Failed to initialize display manager in MQTT service: {e}")
@@ -45,6 +44,14 @@ class MQTTService:
         """Start the MQTT service"""
         try:
             print("Attempting to start MQTT client...")
+            print(
+                "MQTT config: "
+                f"host={config.mqtt.host} "
+                f"port={config.mqtt.port} "
+                f"url_topic={config.mqtt.url_topic} "
+                f"playback_topic={config.mqtt.playback_topic} "
+                f"audio_state_topic={config.mqtt.audio_state_topic}"
+            )
             self._client = Client(
                 hostname=config.mqtt.host,
                 port=config.mqtt.port,
@@ -81,9 +88,8 @@ class MQTTService:
                     # Add playback command topic handler
                     self._topic_handlers[config.mqtt.playback_topic] = self._handle_playback_command
 
-                    # Add system command topic handler (single topic with payload Start/Shutdown)
-                    self._topic_handlers[config.mqtt.system_command] = self._handle_system_command
-                    
+                    print(f"Topic handlers ready: {list(self._topic_handlers.keys())}")
+
                     # Subscribe to topics
                     for topic in self._topic_handlers.keys():
                         print(f"Subscribing to topic: {topic}")
@@ -117,15 +123,26 @@ class MQTTService:
         """Process incoming MQTT message"""
         try:
             topic = message.topic.value
-            payload = message.payload.decode()
-            
-            print(f"Received message on topic {topic}")
+            try:
+                payload = message.payload.decode()
+            except Exception as error:
+                print(
+                    "Failed to decode payload for topic "
+                    f"{topic}: {error}; raw={message.payload!r}"
+                )
+                return
+
+            print(f"Received message on topic {topic} (len={len(payload)})")
             
             # Dispatch to appropriate handler
             if topic in self._topic_handlers:
+                print(f"Dispatching to handler for topic {topic}")
                 await self._topic_handlers[topic](payload)
             else:
-                print(f"No handler for topic: {topic}")
+                print(
+                    f"No handler for topic: {topic}. Expected: "
+                    f"{list(self._topic_handlers.keys())}"
+                )
                 
         except Exception as error:
             print(f"Error processing published message: {error}")
@@ -159,18 +176,13 @@ class MQTTService:
     async def _handle_playback_command(self, payload: str) -> None:
         """Handle playback command messages"""
         print(f"Processing playback command: {payload}")
-        valid_commands = ["Play", "Resume", "Pause", "Stop", "Next", "Previous", "Shutdown"]
+        valid_commands = ["Play", "Resume", "Pause", "Stop", "Next", "Previous"]
         
         # Validate the command
         if payload in valid_commands:
             await self._emit('playback', payload)
         else:
             print(f"Invalid playback command received: {payload}")
-
-    async def _handle_system_command(self, payload: str) -> None:
-        """Handle system command messages (Start/Shutdown)"""
-        print(f"Processing system command: {payload}")
-        await self._emit('system', payload)
 
     async def stop(self) -> None:
         """Stop the MQTT service"""

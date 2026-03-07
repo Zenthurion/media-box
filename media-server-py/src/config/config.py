@@ -5,7 +5,6 @@ class MQTTConfig:
         self.url_topic = "media/url"
         self.audio_state_topic = "media/audio-state"
         self.playback_topic = "media/command"  # media command channel
-        self.system_command = "system/command"
 class Config:
     def __init__(self):
         self.mqtt = MQTTConfig()

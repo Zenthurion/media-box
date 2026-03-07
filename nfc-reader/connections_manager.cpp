@@ -49,7 +49,7 @@ bool ConnectionsManager::publish(const char* topic, const char* message) {
 void ConnectionsManager::connectWiFi() {
     Serial.print("Connecting to WiFi");
     WiFi.disconnect(true);
-    WiFi.setHostname("button-controller");
+    WiFi.setHostname("nfc-reader");
     WiFi.mode(WIFI_STA);
     WiFi.begin(ssid, password);
     
